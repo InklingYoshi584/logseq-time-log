@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useRef } from "react";
+import { useMemo } from "react";
 
 interface CalendarViewProps {
   year: number;
@@ -43,12 +43,7 @@ function generateYearGrid(year: number): Array<{ month: number; days: Array<numb
 
 export default function CalendarView({ year, daysWithTodos, onSelectDay }: CalendarViewProps) {
   const months = useMemo(() => generateYearGrid(year), [year]);
-  const currentMonthRef = useRef<HTMLDivElement>(null);
   const currentMonth = new Date().getMonth();
-
-  useEffect(() => {
-    currentMonthRef.current?.scrollIntoView({ block: "start" });
-  }, []);
 
   return (
     <div className="calendar-view">
@@ -58,7 +53,6 @@ export default function CalendarView({ year, daysWithTodos, onSelectDay }: Calen
         <section
           key={month}
           className="calendar-month"
-          ref={month === currentMonth ? currentMonthRef : undefined}
         >
           <h3 className="calendar-month-heading">{MONTH_NAMES[month]}</h3>
           <div className="calendar-grid">
