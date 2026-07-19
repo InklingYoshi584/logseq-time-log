@@ -4,6 +4,7 @@ interface CalendarViewProps {
   year: number;
   daysWithTodos: Set<number>;
   onSelectDay: (day: number) => void;
+  onYearChange: (delta: number) => void;
 }
 
 const MONTH_NAMES = [
@@ -41,13 +42,16 @@ function generateYearGrid(year: number): Array<{ month: number; days: Array<numb
   return months;
 }
 
-export default function CalendarView({ year, daysWithTodos, onSelectDay }: CalendarViewProps) {
+export default function CalendarView({ year, daysWithTodos, onSelectDay, onYearChange }: CalendarViewProps) {
   const months = useMemo(() => generateYearGrid(year), [year]);
-  const currentMonth = new Date().getMonth();
 
   return (
     <div className="calendar-view">
-      <h2 className="calendar-year-heading">{year}</h2>
+      <h2 className="calendar-year-heading">
+        <button type="button" className="year-nav-btn" onClick={() => onYearChange(-1)}>◀</button>
+        <span>{year}</span>
+        <button type="button" className="year-nav-btn" onClick={() => onYearChange(1)}>▶</button>
+      </h2>
       <div className="calendar-months">
       {months.map(({ month, days }) => (
         <section

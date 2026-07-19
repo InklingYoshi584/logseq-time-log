@@ -22,7 +22,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
 
   /* ── Calendar state ── */
-  const currentYear = new Date().getFullYear();
+  const [year, setYear] = useState(new Date().getFullYear());
   const [daysWithTodos, setDaysWithTodos] = useState<Set<number>>(new Set());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [dayTodos, setDayTodos] = useState<TodoBlock[]>([]);
@@ -53,7 +53,7 @@ export default function App() {
     setError(null);
     try {
       const [days, pageResults] = await Promise.all([
-        queryJournalDaysWithTodos(currentYear),
+        queryJournalDaysWithTodos(year),
         queryAllTodos(),
       ]);
       setDaysWithTodos(days);
@@ -66,7 +66,7 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, [currentYear]);
+  }, [year]);
 
   useEffect(() => {
     loadCalendar();
@@ -92,6 +92,11 @@ export default function App() {
     setDayTodos([]);
   }, []);
 
+  const handleYearChange = useCallback((delta: number) => {
+    setYear((y) => y + delta);
+    setSelectedDay(null);
+  }, []);
+
   /* ── Drag to journal ── */
   const handleDropOnJournal = useCallback(
     async (blockUuid: string) => {
@@ -115,9 +120,10 @@ export default function App() {
     />
   ) : (
     <CalendarView
-      year={currentYear}
+      year={year}
       daysWithTodos={daysWithTodos}
       onSelectDay={handleSelectDay}
+      onYearChange={handleYearChange}
     />
   );
 

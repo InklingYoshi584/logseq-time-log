@@ -301,15 +301,38 @@ html, body, #root {
 }
 
 .calendar-year-heading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
   font-size: 22px;
   font-weight: 700;
   color: var(--text-primary);
-  text-align: center;
   padding: 8px 0 16px;
   position: sticky;
   top: 0;
   background: var(--bg-primary);
   z-index: 2;
+}
+
+.year-nav-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.year-nav-btn:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
 }
 
 .calendar-month {
