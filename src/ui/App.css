@@ -368,6 +368,11 @@ html, body, #root {
   color: var(--text-muted);
   opacity: 0.55;
   background: var(--bg-surface);
+  cursor: pointer;
+}
+
+.calendar-day.no-todos:hover {
+  background: var(--bg-elevated);
 }
 
 .calendar-day.has-todos {

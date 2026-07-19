@@ -146,9 +146,15 @@ export default function CalendarView({
                           {day % 100}
                         </button>
                       ) : (
-                        <div key={day} className="calendar-day no-todos">
+                        <button
+                          key={day}
+                          type="button"
+                        className="calendar-day no-todos"
+                          onClick={() => onSelectDay(day)}
+                          title={formatDay(day)}
+                        >
                           {day % 100}
-                        </div>
+                        </button>
                       )
                     )}
                   </div>
