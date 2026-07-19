@@ -1,0 +1,456 @@
+/* ── Theme (dark by default, light via .light class) ── */
+:root {
+  --bg-primary: #1b2430;
+  --bg-surface: #232e3b;
+  --bg-elevated: #2a3543;
+  --bg-hover: #313d4e;
+  --border: #364153;
+  --text-primary: #d1d5db;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  --accent: #60a5fa;
+  --accent-dim: #3b82f6;
+  --danger: #f87171;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --marker-todo: #9ca3af;
+  --marker-doing: #60a5fa;
+  --marker-now: #34d399;
+  --marker-later: #fbbf24;
+  --marker-waiting: #f87171;
+  --radius: 6px;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+}
+
+body.light,
+.light {
+  --bg-primary: #ffffff;
+  --bg-surface: #f3f4f6;
+  --bg-elevated: #e5e7eb;
+  --bg-hover: #d1d5db;
+  --border: #d1d5db;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #9ca3af;
+}
+
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}
+
+/* ── App Shell ── */
+.time-log-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.time-log-content {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Tab Bar ── */
+.tab-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+  padding: 0 8px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.tab-bar-tabs {
+  display: flex;
+  gap: 2px;
+}
+
+.tab-bar-tab {
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-family: var(--font);
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: background 0.15s, color 0.15s;
+}
+
+.tab-bar-tab:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.tab-bar-tab.active {
+  background: var(--bg-elevated);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.tab-bar-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.tab-bar-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.tab-bar-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.tab-bar-close:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
+/* ── Split View ── */
+.split-view {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  gap: 0;
+}
+
+.split-pane {
+  overflow: auto;
+  height: 100%;
+}
+
+.split-pane-left {
+  flex-shrink: 0;
+}
+
+.split-pane-right {
+  flex: 1;
+  min-width: 0;
+}
+
+.split-divider {
+  width: 4px;
+  cursor: col-resize;
+  flex-shrink: 0;
+  background: var(--border);
+  transition: background 0.15s ease;
+  position: relative;
+}
+
+.split-divider:hover,
+.split-divider:active {
+  background: var(--text-muted);
+}
+
+/* ── Todo List ── */
+.todo-list {
+  height: 100%;
+  overflow-y: auto;
+  padding: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.todo-empty {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 32px 16px;
+}
+
+.todo-error {
+  color: var(--danger);
+}
+
+.todo-hint {
+  color: var(--text-muted);
+  text-align: center;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+/* ── Group Headings ── */
+.todo-day-group, .todo-page-group {
+  margin-bottom: 16px;
+}
+
+.todo-day-heading, .todo-page-heading {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+  position: sticky;
+  top: 0;
+  background: var(--bg-primary);
+  z-index: 1;
+}
+
+/* ── Todo Card ── */
+.todo-card {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  cursor: default;
+  transition: background 0.12s;
+  border: 1px solid transparent;
+}
+
+.todo-card:hover {
+  background: var(--bg-surface);
+}
+
+.todo-card[draggable="true"] {
+  cursor: grab;
+}
+
+.todo-card[draggable="true"]:active {
+  cursor: grabbing;
+  opacity: 0.7;
+}
+
+.todo-card.drag-over {
+  border-color: var(--accent);
+  background: var(--bg-elevated);
+}
+
+.marker-done .todo-marker {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+
+.todo-marker {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+.marker-todo .todo-marker     { color: var(--marker-todo);    background: color-mix(in srgb, var(--marker-todo) 15%, transparent); }
+.marker-doing .todo-marker    { color: var(--marker-doing);   background: color-mix(in srgb, var(--marker-doing) 15%, transparent); }
+.marker-now .todo-marker      { color: var(--marker-now);     background: color-mix(in srgb, var(--marker-now) 15%, transparent); }
+.marker-later .todo-marker    { color: var(--marker-later);   background: color-mix(in srgb, var(--marker-later) 15%, transparent); }
+.marker-waiting .todo-marker  { color: var(--marker-waiting); background: color-mix(in srgb, var(--marker-waiting) 15%, transparent); }
+
+.todo-priority {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+
+.todo-content {
+  color: var(--text-primary);
+  line-height: 1.4;
+  word-break: break-word;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Scrollbar ── */
+
+/* ── Calendar View ── */
+.calendar-view {
+  height: 100%;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.calendar-months {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+}
+
+.calendar-year-heading {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: center;
+  padding: 8px 0 16px;
+  position: sticky;
+  top: 0;
+  background: var(--bg-primary);
+  z-index: 2;
+}
+
+.calendar-month {
+  background: var(--bg-surface);
+  border-radius: var(--radius);
+  padding: 10px;
+  border: 1px solid var(--border);
+}
+
+.calendar-month-heading {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 4px 0 8px;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.calendar-day-header {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 4px 0;
+  text-transform: uppercase;
+}
+
+.calendar-day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-family: var(--font);
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: default;
+  transition: background 0.1s;
+}
+
+.calendar-day.empty {
+  /* invisible filler cells */
+}
+
+.calendar-day.no-todos {
+  color: var(--text-muted);
+  opacity: 0.55;
+  background: var(--bg-surface);
+}
+
+.calendar-day.has-todos {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.calendar-day.has-todos:hover {
+  background: var(--bg-elevated);
+  color: var(--accent);
+}
+
+/* ── Day Detail ── */
+.day-detail {
+  height: 100%;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.day-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg-primary);
+  z-index: 2;
+}
+
+.day-detail-back {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.day-detail-back:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.day-detail-date {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.day-detail-sections {
+  padding: 12px;
+}
+
+.day-priority-section {
+  margin-bottom: 20px;
+}
+
+.day-priority-heading {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+
+.day-todo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
