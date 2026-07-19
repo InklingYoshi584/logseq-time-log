@@ -70,18 +70,16 @@ export async function queryAllTodos(): Promise<TodoBlock[]> {
  * Get all journal days (as integers like 20260719) within the given year
  * that have at least one TODO/DONE block.
  */
-export async function queryJournalDaysWithTodos(year: number): Promise<Set<number>> {
-  const yStart = year * 10000 + 101;
-  const yEnd = year * 10000 + 1231;
-
+/**
+ * Get ALL journal days (across all years) that have at least one TODO/DONE block.
+ */
+export async function queryAllJournalDaysWithTodos(): Promise<Set<number>> {
   const query = `
     [:find ?day
      :where
      [?b :block/marker ?m]
      [?b :block/page ?p]
-     [?p :block/journal-day ?day]
-     [(>= ?day ${yStart})]
-     [(<= ?day ${yEnd})]]
+     [?p :block/journal-day ?day]]
   `;
 
   const raw = await runQuery(query) as number[] | null;
