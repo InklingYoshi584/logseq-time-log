@@ -288,6 +288,11 @@ html, body, #root {
 /* ── Scrollbar ── */
 
 /* ── Calendar View ── */
+.calendar-sentinel {
+  height: 1px;
+  width: 100%;
+}
+
 .calendar-view {
   height: 100%;
   overflow-y: auto;

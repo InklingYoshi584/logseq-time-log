@@ -1,8 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useEffect } from "react";
 
 interface CalendarViewProps {
-  daysWithTodos: Set<number>;
+  yearRange: { start: number; end: number };
+  daysByYear: Map<number, Set<number>>;
   onSelectDay: (day: number) => void;
+  onExpandUp: () => void;
+  onExpandDown: () => void;
 }
 
 const MONTH_NAMES = [
@@ -12,16 +15,6 @@ const MONTH_NAMES = [
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-/** Extract all unique years from a set of journal day integers. */
-function extractYears(days: Set<number>): number[] {
-  const years = new Set<number>();
-  for (const d of days) {
-    years.add(Math.floor(d / 10000));
-  }
-  return [...years].sort((a, b) => a - b);
-}
-
-/** Generate month grids for a specific year. */
 function generateYearGrid(year: number): Array<{ month: number; days: Array<number | null> }> {
   const months: Array<{ month: number; days: Array<number | null> }> = [];
   for (let m = 0; m < 12; m++) {
@@ -37,16 +30,59 @@ function generateYearGrid(year: number): Array<{ month: number; days: Array<numb
   return months;
 }
 
-export default function CalendarView({ daysWithTodos, onSelectDay }: CalendarViewProps) {
-  const years = useMemo(() => extractYears(daysWithTodos), [daysWithTodos]);
+function formatDay(day: number): string {
+  const s = String(day);
+  return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
+}
 
-  // If no data at all, show current year as fallback
-  const displayYears = years.length > 0 ? years : [new Date().getFullYear()];
+export default function CalendarView({
+  yearRange,
+  daysByYear,
+  onSelectDay,
+  onExpandUp,
+  onExpandDown,
+}: CalendarViewProps) {
+  const topSentinel = useRef<HTMLDivElement>(null);
+  const bottomSentinel = useRef<HTMLDivElement>(null);
+
+  const years: number[] = useMemo(() => {
+    const result: number[] = [];
+    for (let y = yearRange.start; y <= yearRange.end; y++) {
+      result.push(y);
+    }
+    return result;
+  }, [yearRange]);
+
+  useEffect(() => {
+    const top = topSentinel.current;
+    const bottom = bottomSentinel.current;
+    if (!top || !bottom) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          if (entry.target === top) onExpandUp();
+          if (entry.target === bottom) onExpandDown();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+
+    observer.observe(top);
+    observer.observe(bottom);
+    return () => observer.disconnect();
+  }, [onExpandUp, onExpandDown, years]);
 
   return (
     <div className="calendar-view">
-      {displayYears.map((year) => {
+      <div ref={topSentinel} className="calendar-sentinel" />
+
+      {years.map((year) => {
+        const daysWithTodos = daysByYear.get(year) ?? new Set<number>();
+        // eslint-disable-next-line react-hooks/rules-of-hooks
         const months = useMemo(() => generateYearGrid(year), [year]);
+
         return (
           <div key={year} className="calendar-year-section">
             <h2 className="calendar-year-heading">{year}</h2>
@@ -84,14 +120,8 @@ export default function CalendarView({ daysWithTodos, onSelectDay }: CalendarVie
           </div>
         );
       })}
+
+      <div ref={bottomSentinel} className="calendar-sentinel" />
     </div>
   );
-}
-
-function formatDay(day: number): string {
-  const s = String(day);
-  const y = s.slice(0, 4);
-  const m = s.slice(4, 6);
-  const d = s.slice(6, 8);
-  return `${y}-${m}-${d}`;
 }

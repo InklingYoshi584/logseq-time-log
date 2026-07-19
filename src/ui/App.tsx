@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { TodoBlock, TabId, ViewLayout } from "./types";
 import {
   queryAllTodos,
-  queryAllJournalDaysWithTodos,
+  queryJournalDaysWithTodos,
   queryDayTodos,
   groupTodos,
   sortPageTodos,
@@ -14,6 +14,8 @@ import CalendarView from "./components/CalendarView";
 import DayDetail from "./components/DayDetail";
 import PageTodos from "./components/PageTodos";
 
+const INITIAL_YEAR_WINDOW = 3;
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>("journal");
   const [viewLayout, setViewLayout] = useState<ViewLayout>("single");
@@ -21,7 +23,10 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [daysWithTodos, setDaysWithTodos] = useState<Set<number>>(new Set());
+  /* ── Calendar state ── */
+  const currentYear = new Date().getFullYear();
+  const [yearRange, setYearRange] = useState({ start: currentYear, end: currentYear });
+  const [daysByYear, setDaysByYear] = useState<Map<number, Set<number>>>(new Map());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [dayTodos, setDayTodos] = useState<TodoBlock[]>([]);
   const [dayLoading, setDayLoading] = useState(false);
@@ -45,16 +50,54 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [handleClose, selectedDay]);
 
-  /* ── Load calendar metadata + page TODOs ── */
-  const loadCalendar = useCallback(async () => {
+  /* ── Year loading ── */
+  const loadYear = useCallback(async (year: number) => {
+    const days = await queryJournalDaysWithTodos(year);
+    setDaysByYear((prev) => {
+      const next = new Map(prev);
+      next.set(year, days);
+      return next;
+    });
+  }, []);
+
+  const expandUp = useCallback(() => {
+    setYearRange((prev) => {
+      const newStart = prev.start - 1;
+      loadYear(newStart);
+      return { start: newStart, end: prev.end };
+    });
+  }, [loadYear]);
+
+  const expandDown = useCallback(() => {
+    setYearRange((prev) => {
+      const newEnd = prev.end + 1;
+      loadYear(newEnd);
+      return { start: prev.start, end: newEnd };
+    });
+  }, [loadYear]);
+
+  /* ── Initial load ── */
+  const initYears = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [days, pageResults] = await Promise.all([
-        queryAllJournalDaysWithTodos(),
-        queryAllTodos(),
-      ]);
-      setDaysWithTodos(days);
+      // Load current year
+      await loadYear(currentYear);
+
+      // Expand to window
+      const half = Math.floor(INITIAL_YEAR_WINDOW / 2);
+      const start = currentYear - half;
+      const end = currentYear + half;
+      setYearRange({ start, end });
+
+      const promises = [];
+      for (let y = start; y <= end; y++) {
+        if (y !== currentYear) promises.push(loadYear(y));
+      }
+      await Promise.all(promises);
+
+      // Load page TODOs
+      const pageResults = await queryAllTodos();
       const grouped = groupTodos(pageResults);
       setPageTodos(sortPageTodos(grouped.pages));
     } catch (err) {
@@ -64,11 +107,11 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentYear, loadYear]);
 
   useEffect(() => {
-    loadCalendar();
-  }, [loadCalendar]);
+    initYears();
+  }, [initYears]);
 
   /* ── Day selection ── */
   const handleSelectDay = useCallback(async (day: number) => {
@@ -95,12 +138,12 @@ export default function App() {
     async (blockUuid: string) => {
       try {
         await moveTodoToJournal(blockUuid);
-        await loadCalendar();
+        await initYears();
       } catch (err) {
         console.error("Failed to move TODO to journal:", err);
       }
     },
-    [loadCalendar]
+    [initYears]
   );
 
   /* ── Journal tab content ── */
@@ -113,8 +156,11 @@ export default function App() {
     />
   ) : (
     <CalendarView
-      daysWithTodos={daysWithTodos}
+      yearRange={yearRange}
+      daysByYear={daysByYear}
       onSelectDay={handleSelectDay}
+      onExpandUp={expandUp}
+      onExpandDown={expandDown}
     />
   );
 
@@ -139,7 +185,7 @@ export default function App() {
         onToggleSplit={() =>
           setViewLayout((v) => (v === "split" ? "single" : "split"))
         }
-        onRefresh={loadCalendar}
+        onRefresh={initYears}
         onClose={handleClose}
       />
       <main className="time-log-content">{mainContent}</main>
