@@ -53,6 +53,14 @@ export default function CalendarView({
     return result;
   }, [yearRange]);
 
+  const yearGrids = useMemo(() => {
+    const map = new Map<number, Array<{ month: number; days: Array<number | null> }>>();
+    for (const y of years) {
+      map.set(y, generateYearGrid(y));
+    }
+    return map;
+  }, [years]);
+
   useEffect(() => {
     const top = topSentinel.current;
     const bottom = bottomSentinel.current;
@@ -80,8 +88,7 @@ export default function CalendarView({
 
       {years.map((year) => {
         const daysWithTodos = daysByYear.get(year) ?? new Set<number>();
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        const months = useMemo(() => generateYearGrid(year), [year]);
+        const months = yearGrids.get(year) ?? [];
 
         return (
           <div key={year} className="calendar-year-section">
