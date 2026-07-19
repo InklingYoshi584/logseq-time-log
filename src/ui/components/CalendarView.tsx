@@ -44,6 +44,8 @@ export default function CalendarView({
 }: CalendarViewProps) {
   const topSentinel = useRef<HTMLDivElement>(null);
   const bottomSentinel = useRef<HTMLDivElement>(null);
+  const blockedUp = useRef(false);
+  const blockedDown = useRef(false);
 
   const years: number[] = useMemo(() => {
     const result: number[] = [];
@@ -61,6 +63,12 @@ export default function CalendarView({
     return map;
   }, [years]);
 
+  // Reset expansion guards after years change (expansion completed)
+  useEffect(() => {
+    blockedUp.current = false;
+    blockedDown.current = false;
+  }, [years]);
+
   useEffect(() => {
     const top = topSentinel.current;
     const bottom = bottomSentinel.current;
@@ -70,8 +78,14 @@ export default function CalendarView({
       (entries) => {
         for (const entry of entries) {
           if (!entry.isIntersecting) continue;
-          if (entry.target === top) onExpandUp();
-          if (entry.target === bottom) onExpandDown();
+          if (entry.target === top && !blockedUp.current) {
+            blockedUp.current = true;
+            onExpandUp();
+          }
+          if (entry.target === bottom && !blockedDown.current) {
+            blockedDown.current = true;
+            onExpandDown();
+          }
         }
       },
       { rootMargin: "200px" }
