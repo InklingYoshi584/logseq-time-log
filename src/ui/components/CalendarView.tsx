@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect } from "react";
+import { useMemo, useRef, useEffect, useCallback } from "react";
 
 interface CalendarViewProps {
   yearRange: { start: number; end: number };
@@ -42,10 +42,10 @@ export default function CalendarView({
   onExpandUp,
   onExpandDown,
 }: CalendarViewProps) {
-  const topSentinel = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const bottomSentinel = useRef<HTMLDivElement>(null);
-  const blockedUp = useRef(false);
-  const blockedDown = useRef(false);
+  const anchorRef = useRef<HTMLElement | null>(null);
+  const expandUpLocked = useRef(false);
 
   const years: number[] = useMemo(() => {
     const result: number[] = [];
@@ -63,43 +63,60 @@ export default function CalendarView({
     return map;
   }, [years]);
 
-  // Reset expansion guards after years change (expansion completed)
+  /* ── Unlock upward expansion when years change ── */
   useEffect(() => {
-    blockedUp.current = false;
-    blockedDown.current = false;
+    expandUpLocked.current = false;
   }, [years]);
 
+  /* ── Scroll anchoring: restore position after prepending years ── */
   useEffect(() => {
-    const top = topSentinel.current;
+    if (anchorRef.current && containerRef.current) {
+      anchorRef.current.scrollIntoView({ block: "start" });
+      anchorRef.current = null;
+    }
+  }, [years]);
+
+  /* ── Upward expansion via scroll detection ── */
+  const handleScroll = useCallback(() => {
+    const container = containerRef.current;
+    if (!container || expandUpLocked.current) return;
+
+    if (container.scrollTop < 400) {
+      expandUpLocked.current = true;
+      // Capture first visible year section as scroll anchor
+      const sections = container.querySelectorAll<HTMLElement>(".calendar-year-section");
+      for (let i = 0; i < sections.length; i++) {
+        const rect = sections[i].getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        if (rect.bottom > containerRect.top) {
+          anchorRef.current = sections[i];
+          break;
+        }
+      }
+      onExpandUp();
+    }
+  }, [onExpandUp]);
+
+  /* ── Downward expansion via IntersectionObserver ── */
+  useEffect(() => {
     const bottom = bottomSentinel.current;
-    if (!top || !bottom) return;
+    if (!bottom) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          if (entry.target === top && !blockedUp.current) {
-            blockedUp.current = true;
-            onExpandUp();
-          }
-          if (entry.target === bottom && !blockedDown.current) {
-            blockedDown.current = true;
-            onExpandDown();
-          }
+          if (entry.isIntersecting) onExpandDown();
         }
       },
-      { rootMargin: "200px" }
+      { rootMargin: "400px" }
     );
 
-    observer.observe(top);
     observer.observe(bottom);
     return () => observer.disconnect();
-  }, [onExpandUp, onExpandDown, years]);
+  }, [onExpandDown, years]);
 
   return (
-    <div className="calendar-view">
-      <div ref={topSentinel} className="calendar-sentinel" />
-
+    <div className="calendar-view" ref={containerRef} onScroll={handleScroll}>
       {years.map((year) => {
         const daysWithTodos = daysByYear.get(year) ?? new Set<number>();
         const months = yearGrids.get(year) ?? [];
