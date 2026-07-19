@@ -57,7 +57,8 @@ html, body, #root {
 
 .time-log-content {
   flex: 1;
-  overflow: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 /* ── Tab Bar ── */
@@ -172,8 +173,6 @@ html, body, #root {
 
 /* ── Todo List ── */
 .todo-list {
-  height: 100%;
-  overflow-y: auto;
   padding: 12px;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
@@ -293,10 +292,7 @@ html, body, #root {
 }
 
 .calendar-view {
-  height: 100%;
-  overflow-y: auto;
   padding: 8px;
-  overscroll-behavior: contain;
 }
 
 .calendar-months {
@@ -387,8 +383,6 @@ html, body, #root {
 
 /* ── Day Detail ── */
 .day-detail {
-  height: 100%;
-  overflow-y: auto;
   padding: 0;
 }
 

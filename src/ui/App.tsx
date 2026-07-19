@@ -178,17 +178,19 @@ export default function App() {
 
   return (
     <div className="time-log-app">
-      <TabBar
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        viewLayout={viewLayout}
-        onToggleSplit={() =>
-          setViewLayout((v) => (v === "split" ? "single" : "split"))
-        }
-        onRefresh={initYears}
-        onClose={handleClose}
-      />
-      <main className="time-log-content">{mainContent}</main>
+      <main className="time-log-content">
+        <TabBar
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          viewLayout={viewLayout}
+          onToggleSplit={() =>
+            setViewLayout((v) => (v === "split" ? "single" : "split"))
+          }
+          onRefresh={initYears}
+          onClose={handleClose}
+        />
+        {mainContent}
+      </main>
     </div>
   );
 }
