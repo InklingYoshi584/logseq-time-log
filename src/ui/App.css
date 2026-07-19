@@ -85,6 +85,8 @@ html, body, #root {
   padding: 6px 14px;
   border: none;
   background: transparent;
+  position: relative;
+  z-index: 1;
   color: var(--text-secondary);
   font-size: 13px;
   font-family: var(--font);
@@ -113,6 +115,8 @@ html, body, #root {
   width: 30px;
   height: 30px;
   border: none;
+  position: relative;
+  z-index: 1;
   background: transparent;
   color: var(--text-secondary);
   font-size: 16px;
@@ -383,6 +387,10 @@ html, body, #root {
 .calendar-day.has-todos:hover {
   background: var(--bg-elevated);
   color: var(--ls-accent, var(--accent));
+}
+
+.journal-drop-zone {
+  min-height: 100%;
 }
 
 /* ── Day Detail ── */

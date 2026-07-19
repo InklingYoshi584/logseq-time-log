@@ -148,20 +148,40 @@ export default function App() {
 
   /* ── Journal tab content ── */
   const journalContent = selectedDay !== null ? (
-    <DayDetail
-      journalDay={selectedDay}
-      todos={dayTodos}
-      loading={dayLoading}
-      onBack={handleBackToCalendar}
-    />
+    <div
+      className="journal-drop-zone"
+      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
+      onDrop={(e) => {
+        e.preventDefault();
+        const uuid = e.dataTransfer.getData("text/plain");
+        if (uuid) handleDropOnJournal(uuid);
+      }}
+    >
+      <DayDetail
+        journalDay={selectedDay}
+        todos={dayTodos}
+        loading={dayLoading}
+        onBack={handleBackToCalendar}
+      />
+    </div>
   ) : (
-    <CalendarView
-      yearRange={yearRange}
-      daysByYear={daysByYear}
-      onSelectDay={handleSelectDay}
-      onExpandUp={expandUp}
-      onExpandDown={expandDown}
-    />
+    <div
+      className="journal-drop-zone"
+      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
+      onDrop={(e) => {
+        e.preventDefault();
+        const uuid = e.dataTransfer.getData("text/plain");
+        if (uuid) handleDropOnJournal(uuid);
+      }}
+    >
+      <CalendarView
+        yearRange={yearRange}
+        daysByYear={daysByYear}
+        onSelectDay={handleSelectDay}
+        onExpandUp={expandUp}
+        onExpandDown={expandDown}
+      />
+    </div>
   );
 
   /* ── Page tab content ── */
