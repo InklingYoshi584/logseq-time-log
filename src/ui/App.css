@@ -52,8 +52,6 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow: hidden;
-  position: relative;
 }
 
 .time-log-content {
@@ -72,9 +70,6 @@ html, body, #root {
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
   user-select: none;
-  position: sticky;
-  top: 0;
-  z-index: 10;
 }
 
 .tab-bar-tabs {
