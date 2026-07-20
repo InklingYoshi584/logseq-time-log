@@ -188,6 +188,7 @@ async function queryAndResolveRefs(journalDay: number): Promise<TodoBlock[]> {
     todos.push({
      ...block,
      content: cleanContent(refBlock.content) ?? block.content,
+     duration: parseLogbookDuration(refBlock.content) ?? block.duration,
      marker: refBlock.marker as TodoBlock["marker"],
      priority: validatePriority(refBlock.priority),
     });
