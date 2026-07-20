@@ -237,7 +237,7 @@ export function groupDayTodosByPriority(todos: TodoBlock[]): Array<[string, Todo
 
 /* ── Move to journal ── */
 
-export async function moveTodoToJournal(blockUuid: string, content: string): Promise<number> {
+export async function moveTodoToJournal(blockUuid: string, content: string, targetDay?: number): Promise<number> {
   let journalDay: number;
   let pageName: string;
   try {
@@ -274,11 +274,23 @@ export async function moveTodoToJournal(blockUuid: string, content: string): Pro
   console.log("[time-log] resolved journalDay:", journalDay);
 
   console.log("[time-log] moveTodoToJournal:", { blockUuid, journalDay, pageName });
-
+  const text = content ? `${content} ((${blockUuid}))` : `((${blockUuid}))`;
+  // If a specific target day was provided (user is viewing a day), override
+  if (targetDay && targetDay !== journalDay) {
+    const ty = Math.floor(targetDay / 10000);
+    const tm = String(Math.floor((targetDay % 10000) / 100)).padStart(2, "0");
+    const td = String(targetDay % 100).padStart(2, "0");
+    const targetPageName = `${ty}${tm}${td}`;
+    console.log("[time-log] overriding target to:", { targetDay, targetPageName });
+    const todosUuid = await findOrCreateTodosBlock(targetPageName);
+    const result = await logseq.Editor.insertBlock(todosUuid, text, { sibling: false });
+    console.log("[time-log] insertBlock result (target):", result);
+    try { await logseq.Editor.setBlockCollapsed(todosUuid, { flag: false }); } catch {}
+    return targetDay;
+  }
 
   // Find or create the # Todos block, then insert reference as a child
   const todosBlockUuid = await findOrCreateTodosBlock(pageName);
-  const text = content ? `${content} ((${blockUuid}))` : `((${blockUuid}))`;
   const result = await logseq.Editor.insertBlock(todosBlockUuid, text, {
     sibling: false,
   });

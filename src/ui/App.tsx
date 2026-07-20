@@ -137,7 +137,7 @@ export default function App() {
   const handleDropOnJournal = useCallback(
     async (blockUuid: string, content: string) => {
       try {
-        const journalDay = await moveTodoToJournal(blockUuid, content);
+        const journalDay = await moveTodoToJournal(blockUuid, content, selectedDay ?? undefined);
         // Immediately add the day to calendar data so it highlights
         setDaysByYear((prev) => {
           const next = new Map(prev);
