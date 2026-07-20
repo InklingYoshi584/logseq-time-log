@@ -1,5 +1,7 @@
+import { useState, useMemo } from "react";
 import type { TodoBlock } from "../types";
 import TodoCard from "./TodoCard";
+import SearchBar, { type SearchMode } from "./SearchBar";
 
 interface PageTodosProps {
   todos: TodoBlock[];
@@ -11,6 +13,37 @@ interface PageTodosProps {
 }
 
 export default function PageTodos({ todos, loading, error, onDelete, onSelectPage, onChangeMarker }: PageTodosProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchMode, setSearchMode] = useState<SearchMode>("active");
+
+  const filtered = useMemo(() => {
+    let list = todos;
+
+    // Filter by mode
+    if (searchMode === "active") {
+      list = list.filter((t) => t.marker !== "DONE");
+    }
+
+    // Filter by query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      if (searchMode === "pages") {
+        list = list.filter((t) => t.page.name.toLowerCase().includes(q));
+      } else {
+        list = list.filter((t) => t.content.toLowerCase().includes(q));
+      }
+    }
+
+    return list;
+  }, [todos, searchQuery, searchMode]);
+
+  const grouped = useMemo(() => groupByPage(filtered), [filtered]);
+
+  const handleSearch = (query: string, mode: SearchMode) => {
+    setSearchQuery(query);
+    setSearchMode(mode);
+  };
+
   if (error) {
     return (
       <div className="todo-list">
@@ -24,39 +57,38 @@ export default function PageTodos({ todos, loading, error, onDelete, onSelectPag
     return <div className="todo-list"><p className="todo-empty">Loading...</p></div>;
   }
 
-  if (todos.length === 0) {
-    return (
-      <div className="todo-list">
-        <p className="todo-empty">No TODOs in regular pages.</p>
-      </div>
-    );
-  }
-
-  const grouped = groupByPage(todos);
-
   return (
-    <div className="todo-list page-list">
-      {grouped.map(([pageName, pageTodos]) => (
-        <button
-          key={pageName}
-          type="button"
-          className="page-card"
-          onClick={() => onSelectPage?.(pageName)}
-        >
-          <div className="page-card-header">
-            <span className="page-card-name">{pageName}</span>
-            <span className="page-card-count">{pageTodos.length} TODO{pageTodos.length !== 1 ? "s" : ""}</span>
-          </div>
-          <div className="page-card-preview">
-            {pageTodos.slice(0, 3).map((todo) => (
-              <TodoCard key={todo.uuid} todo={todo} draggable={false} onChangeMarker={onChangeMarker} />
-            ))}
-            {pageTodos.length > 3 && (
-              <p className="page-card-more">+{pageTodos.length - 3} more</p>
-            )}
-          </div>
-        </button>
-      ))}
+    <div className="misc-panel">
+      <SearchBar onSearch={handleSearch} />
+      <div className="todo-list page-list">
+        {filtered.length === 0 ? (
+          <p className="todo-empty">
+            {searchQuery.trim() ? "No matching TODOs." : "No TODOs in regular pages."}
+          </p>
+        ) : (
+          grouped.map(([pageName, pageTodos]) => (
+            <button
+              key={pageName}
+              type="button"
+              className="page-card"
+              onClick={() => onSelectPage?.(pageName)}
+            >
+              <div className="page-card-header">
+                <span className="page-card-name">{pageName}</span>
+                <span className="page-card-count">{pageTodos.length} TODO{pageTodos.length !== 1 ? "s" : ""}</span>
+              </div>
+              <div className="page-card-preview">
+                {pageTodos.slice(0, 3).map((todo) => (
+                  <TodoCard key={todo.uuid} todo={todo} draggable={false} onChangeMarker={onChangeMarker} />
+                ))}
+                {pageTodos.length > 3 && (
+                  <p className="page-card-more">+{pageTodos.length - 3} more</p>
+                )}
+              </div>
+            </button>
+          ))
+        )}
+      </div>
     </div>
   );
 }
