@@ -540,7 +540,7 @@ export async function resolveJournalPageName(day: number): Promise<string | null
  return result?.name ?? null;
 }
 
-async function findOrCreateTodosBlock(pageName: string): Promise<string> {
+export async function findOrCreateTodosBlock(pageName: string): Promise<string> {
  try {
   const blocks = await logseq.Editor.getPageBlocksTree(pageName);
   for (const block of blocks) {

@@ -12,6 +12,7 @@ import {
   changeMarker,
   parseLogseqDate,
   resolveJournalPageName,
+  findOrCreateTodosBlock,
 } from "./logseq";
 import HeaderBar from "./components/HeaderBar";
 import SplitView from "./components/SplitView";
@@ -209,10 +210,9 @@ export default function App() {
         ?? `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`;
       await logseq.Editor.createPage(pageName, {}, { journal: true, createFirstBlock: false });
       const prefix = priority ? `[#${priority}] ` : "";
-      await logseq.Editor.insertBlock(pageName, `${prefix}TODO ${text}`, {
-        isPageBlock: true,
-        sibling: true,
-      });
+      const content = `${prefix}TODO ${text}`;
+      const todosBlockUuid = await findOrCreateTodosBlock(pageName);
+      await logseq.Editor.insertBlock(todosBlockUuid, content, { sibling: false });
       const todos = await queryDayTodos(selectedDay);
       setDayTodos(todos);
     } catch (err) {
