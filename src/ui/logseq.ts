@@ -275,35 +275,34 @@ export async function moveTodoToJournal(blockUuid: string, content: string, targ
 
   console.log("[time-log] moveTodoToJournal:", { blockUuid, journalDay, pageName });
   const text = content ? `${content} ((${blockUuid}))` : `((${blockUuid}))`;
-  // If a specific target day was provided (user is viewing a day), override
-  if (targetDay && targetDay !== journalDay) {
-    const ty = Math.floor(targetDay / 10000);
-    const tm = String(Math.floor((targetDay % 10000) / 100)).padStart(2, "0");
-    const td = String(targetDay % 100).padStart(2, "0");
-    const targetPageName = `${ty}${tm}${td}`;
-    console.log("[time-log] overriding target to:", { targetDay, targetPageName });
-    const todosUuid = await findOrCreateTodosBlock(targetPageName);
-    const result = await logseq.Editor.insertBlock(todosUuid, text, { sibling: false });
-    console.log("[time-log] insertBlock result (target):", result);
-    try { await logseq.Editor.setBlockCollapsed(todosUuid, { flag: false }); } catch {}
-    return targetDay;
-  }
 
-  // Find or create the # Todos block, then insert reference as a child
-  const todosBlockUuid = await findOrCreateTodosBlock(pageName);
+  // Determine target page: use targetDay if provided, otherwise today
+  const effectiveDay = targetDay ?? journalDay;
+  const effectivePageName = await resolveJournalPageName(effectiveDay) ?? pageName;
+
+  console.log("[time-log] inserting into:", { effectiveDay, effectivePageName });
+
+  const todosBlockUuid = await findOrCreateTodosBlock(effectivePageName);
   const result = await logseq.Editor.insertBlock(todosBlockUuid, text, {
     sibling: false,
   });
   console.log("[time-log] insertBlock result:", result);
 
-  // Expand the # Todos block so the user can see what was added
   try {
     await logseq.Editor.setBlockCollapsed(todosBlockUuid, { flag: false });
-  } catch {
-    // ignore if not supported
-  }
+  } catch {}
 
-  return journalDay;
+  return effectiveDay;
+}
+
+async function resolveJournalPageName(day: number): Promise<string | null> {
+  const query = `
+    [:find (pull ?p [:block/name]) .
+     :where
+     [?p :block/journal-day ${day}]]
+  `;
+  const result = await runQuery(query) as { name: string } | null;
+  return result?.name ?? null;
 }
 
 async function findOrCreateTodosBlock(pageName: string): Promise<string> {

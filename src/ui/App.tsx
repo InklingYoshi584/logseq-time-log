@@ -147,11 +147,16 @@ export default function App() {
           next.set(year, days);
           return next;
         });
+        // If viewing a specific day, refresh its TODO list
+        if (selectedDay !== null) {
+          const todos = await queryDayTodos(journalDay);
+          setDayTodos(todos);
+        }
       } catch (err) {
         console.error("Failed to move TODO to journal:", err);
       }
     },
-    []
+    [selectedDay]
   );
 
   /* ── Journal tab content ── */
