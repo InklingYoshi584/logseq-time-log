@@ -514,3 +514,60 @@ html, body, #root {
 .todo-card[data-depth="8"] {
   border-left: 2px solid var(--border);
 }
+.page-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.page-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s, border-color 0.12s;
+  font-family: var(--font);
+  color: var(--text-primary);
+  width: 100%;
+}
+
+.page-card:hover {
+  background: var(--bg-elevated);
+  border-color: var(--ls-accent, var(--accent));
+}
+
+.page-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.page-card-name {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.page-card-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg-primary);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.page-card-preview {
+  pointer-events: none;
+}
+
+.page-card-more {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 4px 10px;
+}
+
+.page-detail {
+  height: 100%;
+}

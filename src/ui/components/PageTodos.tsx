@@ -6,9 +6,10 @@ interface PageTodosProps {
   loading: boolean;
   error: string | null;
   onDelete?: (uuid: string) => void;
+  onSelectPage?: (pageName: string) => void;
 }
 
-export default function PageTodos({ todos, loading, error, onDelete }: PageTodosProps) {
+export default function PageTodos({ todos, loading, error, onDelete, onSelectPage }: PageTodosProps) {
   if (error) {
     return (
       <div className="todo-list">
@@ -33,14 +34,27 @@ export default function PageTodos({ todos, loading, error, onDelete }: PageTodos
   const grouped = groupByPage(todos);
 
   return (
-    <div className="todo-list">
+    <div className="todo-list page-list">
       {grouped.map(([pageName, pageTodos]) => (
-        <section key={pageName} className="todo-page-group">
-          <h3 className="todo-page-heading">{pageName}</h3>
-          {pageTodos.map((todo) => (
-            <TodoCard key={todo.uuid} todo={todo} draggable onDelete={onDelete} />
-          ))}
-        </section>
+        <button
+          key={pageName}
+          type="button"
+          className="page-card"
+          onClick={() => onSelectPage?.(pageName)}
+        >
+          <div className="page-card-header">
+            <span className="page-card-name">{pageName}</span>
+            <span className="page-card-count">{pageTodos.length} TODO{pageTodos.length !== 1 ? "s" : ""}</span>
+          </div>
+          <div className="page-card-preview">
+            {pageTodos.slice(0, 3).map((todo) => (
+              <TodoCard key={todo.uuid} todo={todo} draggable={false} />
+            ))}
+            {pageTodos.length > 3 && (
+              <p className="page-card-more">+{pageTodos.length - 3} more</p>
+            )}
+          </div>
+        </button>
       ))}
     </div>
   );

@@ -541,6 +541,57 @@ export async function deleteTodoWithRefs(blockUuid: string): Promise<void> {
  await logseq.Editor.removeBlock(blockUuid);
 }
 
+/** Group TODOs on a page by their nearest non-TODO ancestor (title block). */
+export async function queryPageTodosGroupedByTitle(pageName: string): Promise<Array<{ title: string; todos: TodoBlock[] }>> {
+ const blocks = await logseq.Editor.getPageBlocksTree(pageName);
+ if (!blocks || blocks.length === 0) return [];
+
+ const groups = new Map<string, TodoBlock[]>();
+ const KEY_UNCATEGORIZED = "__uncategorized__";
+
+ function walk(children: Array<Record<string, unknown>> | undefined, title: string | null) {
+  if (!children) return;
+  for (const child of children) {
+   const marker = child.marker as string | undefined;
+   // If this block is a TODO, add it under the current title
+   if (marker && typeof marker === "string" && marker in VALID_MARKERS) {
+    const key = title ?? KEY_UNCATEGORIZED;
+    const group = groups.get(key);
+    const todo: TodoBlock = {
+     uuid: String(child.uuid ?? ""),
+     content: cleanContent(String(child.content ?? "")),
+     marker: marker as TodoBlock["marker"],
+     priority: validatePriority(child.priority),
+     page: { name: pageName, journalDay: null, journal: false },
+    };
+    if (group) {
+     group.push(todo);
+    } else {
+     groups.set(key, [todo]);
+    }
+    // Continue walking children — the title stays the same for nested TODOs
+    walk(child.children as Array<Record<string, unknown>> | undefined, title);
+   } else {
+    // Not a TODO — this becomes the new title for its children
+    const newTitle = String(child.content ?? "");
+    walk(child.children as Array<Record<string, unknown>> | undefined, newTitle);
+   }
+  }
+ }
+
+ walk(blocks as Array<Record<string, unknown>>, null);
+
+ const result: Array<{ title: string; todos: TodoBlock[] }> = [];
+ // Uncategorized first
+ const uncat = groups.get(KEY_UNCATEGORIZED);
+ if (uncat) result.push({ title: "", todos: uncat });
+ for (const [title, todos] of groups) {
+  if (title !== KEY_UNCATEGORIZED) result.push({ title, todos });
+ }
+
+ return result;
+}
+
 export function sortJournalTodos(todos: TodoBlock[]): TodoBlock[] {
  return [...todos].sort((a, b) => (b.page.journalDay ?? 0) - (a.page.journalDay ?? 0));
 }

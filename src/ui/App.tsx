@@ -15,6 +15,7 @@ import SplitView from "./components/SplitView";
 import CalendarView from "./components/CalendarView";
 import DayDetail from "./components/DayDetail";
 import PageTodos from "./components/PageTodos";
+import PageDetail from "./components/PageDetail";
 
 const INITIAL_YEAR_WINDOW = 3;
 
@@ -30,6 +31,7 @@ export default function App() {
   const [yearRange, setYearRange] = useState({ start: currentYear, end: currentYear });
   const [daysByYear, setDaysByYear] = useState<Map<number, Set<number>>>(new Map());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [selectedPage, setSelectedPage] = useState<string | null>(null);
   const [dayTodos, setDayTodos] = useState<TodoBlock[]>([]);
   const [dayLoading, setDayLoading] = useState(false);
 
@@ -135,6 +137,14 @@ export default function App() {
     setDayTodos([]);
   }, []);
 
+  const handleSelectPage = useCallback((pageName: string) => {
+    setSelectedPage(pageName);
+  }, []);
+
+  const handleBackToPages = useCallback(() => {
+    setSelectedPage(null);
+  }, []);
+
   /* ── Drag to journal ── */
   const handleDropOnJournal = useCallback(
     async (blockUuid: string) => {
@@ -205,7 +215,7 @@ export default function App() {
         todos={dayTodos}
         loading={dayLoading}
         onBack={handleBackToCalendar}
-      onDelete={handleJournalDelete}
+        onDelete={handleJournalDelete}
       />
     </div>
   ) : (
@@ -234,7 +244,17 @@ export default function App() {
   );
 
   /* ── Page tab content ── */
-  const pageContent = <PageTodos todos={pageTodos} loading={loading} error={error} onDelete={handlePageDelete} />;
+  const pageContent = selectedPage !== null ? (
+    <PageDetail pageName={selectedPage} onBack={handleBackToPages} />
+  ) : (
+    <PageTodos
+      todos={pageTodos}
+      loading={loading}
+      error={error}
+      onDelete={handlePageDelete}
+      onSelectPage={handleSelectPage}
+    />
+  );
 
   const mainContent =
     viewLayout === "split" ? (
