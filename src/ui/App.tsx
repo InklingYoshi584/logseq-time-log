@@ -54,21 +54,6 @@ function DragPreview({ data, overMinutes, hourHeight, entries }: {
   const cls = entry?.isClockEntry ? "time-drag-overlay--clock"
     : entry?.todoUuid ? "time-drag-overlay--task"
       : "time-drag-overlay--event";
-
-  if (data.type === "journal-todo") {
-    if (overMinutes !== null) {
-      const end = Math.min(24 * 60, overMinutes + 25);
-      const h = Math.max(4, ((end - overMinutes) / 60) * hourHeight);
-      return (
-        <div className="time-drag-overlay time-drag-overlay--block time-drag-overlay--task" style={{ height: `${h}px` }}>
-          <span className="time-drag-overlay-time">{formatHM(overMinutes)} - {formatHM(end)}</span>
-          <span className="time-drag-overlay-activity">New task</span>
-        </div>
-      );
-    }
-    return <div className="time-drag-overlay">Drop to schedule</div>;
-  }
-
   if (data.type === "time-block" && data.startMinutes !== undefined && data.endMinutes !== undefined) {
     const duration = data.endMinutes - data.startMinutes;
     const h = Math.max(4, (duration / 60) * hourHeight);
@@ -465,12 +450,14 @@ export default function App() {
     refreshTimeLog();
   }, [selectedDay, refreshTimeLog]);
 
+  const handleDropOnTimeLog = useCallback(async (uuid: string, startMinutes: number) => {
+    const endMinutes = Math.min(24 * 60, startMinutes + 25);
+    await createTimeLogEntryLoc(uuid, startMinutes, endMinutes);
+  }, [createTimeLogEntryLoc]);
+
   const handleTimeLogDragStart = useCallback((event: DragStartEvent) => {
     const data = event.active.data.current as DragData | undefined;
     setDragActiveData(data ?? null);
-    if (data?.type === "journal-todo") {
-      setDragOverMinutes(null);
-    }
   }, []);
 
   const handleTimeLogDragMove = useCallback((event: DragMoveEvent) => {
@@ -504,13 +491,6 @@ export default function App() {
     const overId = String(over.id);
 
     switch (data.type) {
-      case "journal-todo": {
-        if (overId !== "time-grid-zone" || !data.uuid || selectedDay === null) return;
-        const startMinutes = dragOverMinutes ?? computeDefaultMinutes();
-        const endMinutes = Math.min(24 * 60, startMinutes + 25);
-        await createTimeLogEntryLoc(data.uuid, startMinutes, endMinutes);
-        break;
-      }
       case "time-block": {
         if (!data.uuid || data.startMinutes === undefined || data.endMinutes === undefined) return;
         const duration = data.endMinutes - data.startMinutes;
@@ -549,7 +529,7 @@ export default function App() {
         break;
       }
     }
-  }, [selectedDay, dragOverMinutes, computeDefaultMinutes]);
+  }, [selectedDay]);
 
   const handleDoubleClickBlock = useCallback((uuid: string) => {
     const entry = timeLogEntries.find(e => e.uuid === uuid);
@@ -652,6 +632,7 @@ export default function App() {
       onDoubleClickBlock={handleDoubleClickBlock}
       onDeleteBlock={deleteTimeLogEntry}
       onDayChange={handleSelectDay}
+      onDropTodo={handleDropOnTimeLog}
     />
   );
 

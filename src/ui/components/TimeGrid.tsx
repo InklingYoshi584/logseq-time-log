@@ -13,6 +13,7 @@ interface TimeGridProps {
  onSelectBlock: (uuid: string | null) => void;
  onDoubleClickBlock: (uuid: string) => void;
  onDeleteBlock: (uuid: string) => void;
+ onDropTodo?: (uuid: string, startMinutes: number) => void;
 }
 
 // Width of the hour marker column — must match .time-grid-markers in App.css
@@ -118,6 +119,7 @@ export default function TimeGrid({
  onSelectBlock,
  onDoubleClickBlock,
  onDeleteBlock,
+ onDropTodo,
 }: TimeGridProps) {
  const gridContainerRef = useRef<HTMLDivElement>(null);
 
@@ -196,6 +198,22 @@ export default function TimeGrid({
     className={`time-grid-zone${isOver ? " time-grid-zone--over" : ""}`}
     ref={setDroppableRef}
     onClick={handleGridZoneClick}
+    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
+    onDrop={(e) => {
+     e.preventDefault();
+     try {
+      const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+      if (!data.uuid || !onDropTodo) return;
+      const zoneRect = e.currentTarget.getBoundingClientRect();
+      const parentScroll = e.currentTarget.closest('.time-grid-scroll');
+      const scrollTop = parentScroll ? (parentScroll as HTMLElement).scrollTop : 0;
+      const relativeY = e.clientY - zoneRect.top + scrollTop;
+      const minutes = (relativeY / hourHeight) * 60;
+      const snapped = Math.round(minutes / 5) * 5;
+      const startMinutes = Math.max(0, Math.min(23 * 60 + 55, snapped));
+      onDropTodo(data.uuid, startMinutes);
+     } catch { /* ignore */ }
+    }}
    >
     {layoutBlocks.map(({ entry, column, totalColumns }) => {
      let displayStart = entry.startMinutes;

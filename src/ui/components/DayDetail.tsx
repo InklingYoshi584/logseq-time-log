@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import {
   DndContext,
   DragOverlay,
-  useDroppable, useDraggable,
+  useDroppable,
   closestCenter,
   PointerSensor,
   useSensor,
@@ -417,26 +417,19 @@ function DraggableTodoCard({ todo, onChangeMarker, depth = 0 }: {
   onChangeMarker: (uuid: string, marker: TodoBlock["marker"]) => void;
   depth?: number;
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: todo.uuid,
-    data: { type: "journal-todo" as const, uuid: todo.uuid },
-  });
-
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    opacity: isDragging ? 0.4 : 1,
-  };
-
   const toggleMarker = todo.marker === "TODO" ? "DOING" : todo.marker === "DOING" ? "TODO" : null;
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <>
       <div
         className={`todo-card marker-${todo.marker.toLowerCase()}`}
         style={{ paddingLeft: `${12 + Math.min(depth, 8) * 20}px`, cursor: "grab" }}
         data-depth={Math.min(depth, 8)}
-        {...attributes}
-        {...listeners}
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.setData("text/plain", JSON.stringify({ uuid: todo.uuid, content: todo.content }));
+          e.dataTransfer.effectAllowed = "copy";
+        }}
       >
         <span className="todo-drag-handle">⋮⋮</span>
         <button
@@ -472,7 +465,7 @@ function DraggableTodoCard({ todo, onChangeMarker, depth = 0 }: {
       {todo.children?.map((child) => (
         <DraggableTodoCard key={child.uuid} todo={child} onChangeMarker={onChangeMarker} depth={depth + 1} />
       ))}
-    </div>
+    </>
   );
 }
 

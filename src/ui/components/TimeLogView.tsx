@@ -5,6 +5,7 @@ import TimeGrid from "./TimeGrid";
 interface TimeLogViewProps {
   journalDay: number;
   entries: TimeLogEntry[];
+  onDropTodo?: (uuid: string, startMinutes: number) => void;
   gridRef?: React.RefObject<HTMLDivElement>;
   loading: boolean;
   hourHeight: number;
@@ -43,6 +44,7 @@ function getToday(): number {
 export default function TimeLogView({
   journalDay,
   entries,
+  onDropTodo,
   loading,
   gridRef: propGridRef,
   hourHeight,
@@ -140,6 +142,7 @@ export default function TimeLogView({
           <TimeGrid
             entries={entries}
             hourHeight={hourHeight}
+          onDropTodo={onDropTodo}
             resizeState={resizeState}
             selectedBlockUuid={selectedBlockUuid}
             onSelectBlock={onSelectBlock}
