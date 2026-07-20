@@ -356,6 +356,8 @@ function cleanContent(raw: string | null | undefined): string {
  let s = raw.replace(/:\s*LOGBOOK\s*:[\s\S]*?:\s*END\s*:/gi, "").replace(/\s*\w+::\s*\S+/g, "").trim();
  // Strip marker prefix (TODO, DOING, DONE, NOW, LATER, WAITING)
  s = s.replace(/^(TODO|DOING|DONE|NOW|LATER|WAITING)\s+/i, "");
+ // Strip priority tag [#A], [#B], [#C]
+ s = s.replace(/^\[#(A|B|C)\]\s*/i, "");
  return s;
 }
 
