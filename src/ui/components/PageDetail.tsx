@@ -7,9 +7,10 @@ import TodoCard from "./TodoCard";
 interface PageDetailProps {
   pageName: string;
   onBack: () => void;
+  onChangeMarker: (uuid: string, marker: TodoBlock["marker"]) => void;
 }
 
-export default function PageDetail({ pageName, onBack }: PageDetailProps) {
+export default function PageDetail({ pageName, onBack, onChangeMarker }: PageDetailProps) {
   const [groups, setGroups] = useState<Array<{ title: string; todos: TodoBlock[] }>>([]);
   const [loading, setLoading] = useState(true);
 
@@ -57,7 +58,7 @@ export default function PageDetail({ pageName, onBack }: PageDetailProps) {
               <h3 className="day-priority-heading">{title || "Uncategorized"}</h3>
               <div className="day-todo-list">
                 {todos.map((todo) => (
-                  <TodoCard key={todo.uuid} todo={todo} draggable onDelete={handleDelete} />
+                  <TodoCard key={todo.uuid} todo={todo} draggable onDelete={handleDelete} onChangeMarker={onChangeMarker} />
                 ))}
               </div>
             </section>

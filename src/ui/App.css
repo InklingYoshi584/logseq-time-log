@@ -17,6 +17,7 @@
   --marker-now: #34d399;
   --marker-later: #fbbf24;
   --marker-waiting: #f87171;
+  --marker-done: #6b7280;
   --radius: 6px;
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: "SF Mono", "Fira Code", "Cascadia Code", monospace;
@@ -252,11 +253,6 @@ html, body, #root {
   background: var(--bg-elevated);
 }
 
-.marker-done .todo-marker {
-  color: var(--text-muted);
-  opacity: 0.6;
-}
-
 
 .todo-marker {
   font-size: 11px;
@@ -268,11 +264,50 @@ html, body, #root {
   flex-shrink: 0;
 }
 
+.todo-marker--clickable {
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.12s;
+}
+
+.todo-marker--clickable:hover {
+  opacity: 0.75;
+}
+
+.todo-checkbox {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--text-muted);
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.todo-checkbox.checked {
+  background: var(--ls-accent, var(--accent));
+  border-color: var(--ls-accent, var(--accent));
+}
+
+.todo-checkbox.checked::after {
+  content: "";
+  display: block;
+  width: 4px;
+  height: 8px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  margin: 1px auto 0;
+}
+
 .marker-todo .todo-marker     { color: var(--marker-todo);    background: color-mix(in srgb, var(--marker-todo) 15%, transparent); }
 .marker-doing .todo-marker    { color: var(--marker-doing);   background: color-mix(in srgb, var(--marker-doing) 15%, transparent); }
 .marker-now .todo-marker      { color: var(--marker-now);     background: color-mix(in srgb, var(--marker-now) 15%, transparent); }
 .marker-later .todo-marker    { color: var(--marker-later);   background: color-mix(in srgb, var(--marker-later) 15%, transparent); }
 .marker-waiting .todo-marker  { color: var(--marker-waiting); background: color-mix(in srgb, var(--marker-waiting) 15%, transparent); }
+.marker-done .todo-marker     { color: var(--marker-done);    background: color-mix(in srgb, var(--marker-done) 15%, transparent); }
 
 .todo-priority {
   font-size: 11px;

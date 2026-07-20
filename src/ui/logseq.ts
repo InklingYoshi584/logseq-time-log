@@ -512,6 +512,11 @@ async function findOrCreateTodosBlock(pageName: string): Promise<string> {
 
 /* ── Delete ── */
 
+/** Update a block's TODO marker. */
+export async function changeMarker(blockUuid: string, marker: string): Promise<void> {
+ await logseq.Editor.upsertBlockProperty(blockUuid, "marker", marker);
+}
+
 /** Delete a single block from the journal page. */
 export async function deleteJournalBlock(blockUuid: string): Promise<void> {
  await logseq.Editor.removeBlock(blockUuid);

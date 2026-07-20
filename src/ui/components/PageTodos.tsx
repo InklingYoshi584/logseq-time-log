@@ -7,9 +7,10 @@ interface PageTodosProps {
   error: string | null;
   onDelete?: (uuid: string) => void;
   onSelectPage?: (pageName: string) => void;
+  onChangeMarker?: (uuid: string, marker: string) => void;
 }
 
-export default function PageTodos({ todos, loading, error, onDelete, onSelectPage }: PageTodosProps) {
+export default function PageTodos({ todos, loading, error, onDelete, onSelectPage, onChangeMarker }: PageTodosProps) {
   if (error) {
     return (
       <div className="todo-list">
@@ -48,7 +49,7 @@ export default function PageTodos({ todos, loading, error, onDelete, onSelectPag
           </div>
           <div className="page-card-preview">
             {pageTodos.slice(0, 3).map((todo) => (
-              <TodoCard key={todo.uuid} todo={todo} draggable={false} />
+              <TodoCard key={todo.uuid} todo={todo} draggable={false} onChangeMarker={onChangeMarker} />
             ))}
             {pageTodos.length > 3 && (
               <p className="page-card-more">+{pageTodos.length - 3} more</p>

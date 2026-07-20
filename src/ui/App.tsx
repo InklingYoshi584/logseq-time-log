@@ -9,6 +9,7 @@ import {
   moveTodoToJournal,
   deleteJournalBlock,
   deleteTodoWithRefs,
+  changeMarker,
 } from "./logseq";
 import TabBar from "./components/TabBar";
 import SplitView from "./components/SplitView";
@@ -194,6 +195,25 @@ export default function App() {
     }
   }, []);
 
+  const handleChangeMarker = useCallback(async (blockUuid: string, marker: string) => {
+    try {
+      await changeMarker(blockUuid, marker);
+      // Refresh the active view
+      if (selectedDay !== null) {
+        const todos = await queryDayTodos(selectedDay);
+        setDayTodos(todos);
+      }
+      if (selectedPage !== null) {
+        // Page detail handles its own refresh
+      }
+      const pageResults = await queryAllTodos();
+      const grouped = groupTodos(pageResults);
+      setPageTodos(sortPageTodos(grouped.pages));
+    } catch (err) {
+      console.error("Failed to change marker:", err);
+    }
+  }, [selectedDay, selectedPage]);
+
   /* ── Journal tab content ── */
   const journalContent = selectedDay !== null ? (
     <div
@@ -216,6 +236,7 @@ export default function App() {
         loading={dayLoading}
         onBack={handleBackToCalendar}
         onDelete={handleJournalDelete}
+        onChangeMarker={handleChangeMarker}
       />
     </div>
   ) : (
@@ -245,7 +266,7 @@ export default function App() {
 
   /* ── Page tab content ── */
   const pageContent = selectedPage !== null ? (
-    <PageDetail pageName={selectedPage} onBack={handleBackToPages} />
+    <PageDetail pageName={selectedPage} onBack={handleBackToPages} onChangeMarker={handleChangeMarker} />
   ) : (
     <PageTodos
       todos={pageTodos}
@@ -253,6 +274,7 @@ export default function App() {
       error={error}
       onDelete={handlePageDelete}
       onSelectPage={handleSelectPage}
+      onChangeMarker={handleChangeMarker}
     />
   );
 

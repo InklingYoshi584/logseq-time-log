@@ -7,6 +7,7 @@ interface DayDetailProps {
   loading: boolean;
   onBack: () => void;
   onDelete: (blockUuid: string) => void;
+  onChangeMarker: (blockUuid: string, marker: TodoBlock["marker"]) => void;
 }
 
 const MARKER_BADGE: Record<string, string> = {
@@ -18,7 +19,7 @@ const MARKER_BADGE: Record<string, string> = {
   WAITING: "WAITING",
 };
 
-export default function DayDetail({ journalDay, todos, loading, onBack, onDelete }: DayDetailProps) {
+export default function DayDetail({ journalDay, todos, loading, onBack, onDelete, onChangeMarker }: DayDetailProps) {
   if (loading) {
     return (
       <div className="day-detail">
@@ -50,7 +51,7 @@ export default function DayDetail({ journalDay, todos, loading, onBack, onDelete
               <h3 className="day-priority-heading">{label}</h3>
               <div className="day-todo-list">
                 {items.map((todo) => (
-                  <DayTodoCard key={todo.uuid} todo={todo} onDelete={onDelete} />
+                  <DayTodoCard key={todo.uuid} todo={todo} onDelete={onDelete} onChangeMarker={onChangeMarker} />
                 ))}
               </div>
             </section>
@@ -61,8 +62,14 @@ export default function DayDetail({ journalDay, todos, loading, onBack, onDelete
   );
 }
 
-function DayTodoCard({ todo, onDelete, depth = 0 }: { todo: TodoBlock; onDelete: (uuid: string) => void; depth?: number }) {
+function DayTodoCard({ todo, onDelete, onChangeMarker, depth = 0 }: {
+  todo: TodoBlock;
+  onDelete: (uuid: string) => void;
+  onChangeMarker: (uuid: string, marker: TodoBlock["marker"]) => void;
+  depth?: number;
+}) {
   const indent = Math.min(depth, 8);
+  const toggleMarker = todo.marker === "TODO" ? "DOING" : todo.marker === "DOING" ? "TODO" : null;
   return (
     <>
       <div
@@ -70,7 +77,32 @@ function DayTodoCard({ todo, onDelete, depth = 0 }: { todo: TodoBlock; onDelete:
         style={{ paddingLeft: `${12 + indent * 20}px` }}
         data-depth={indent}
       >
-        <span className="todo-marker">{MARKER_BADGE[todo.marker] ?? todo.marker}</span>
+        <button
+          type="button"
+          className={`todo-checkbox${todo.marker === "DONE" ? " checked" : ""}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onChangeMarker(todo.uuid, todo.marker === "DONE" ? "TODO" : "DONE");
+          }}
+          title={todo.marker === "DONE" ? "Mark as TODO" : "Mark as DONE"}
+          aria-label="Toggle done"
+        />
+
+        {toggleMarker ? (
+          <button
+            type="button"
+            className="todo-marker todo-marker--clickable"
+            onClick={(e) => {
+              e.stopPropagation();
+              onChangeMarker(todo.uuid, toggleMarker);
+            }}
+            title={`Change to ${MARKER_BADGE[toggleMarker]}`}
+          >
+            {MARKER_BADGE[todo.marker]}
+          </button>
+        ) : (
+          <span className="todo-marker">{MARKER_BADGE[todo.marker] ?? todo.marker}</span>
+        )}
         <span className="todo-content">{todo.content}</span>
         <button
           type="button"
@@ -82,7 +114,7 @@ function DayTodoCard({ todo, onDelete, depth = 0 }: { todo: TodoBlock; onDelete:
         </button>
       </div>
       {todo.children?.map((child) => (
-        <DayTodoCard key={child.uuid} todo={child} onDelete={onDelete} depth={depth + 1} />
+        <DayTodoCard key={child.uuid} todo={child} onDelete={onDelete} onChangeMarker={onChangeMarker} depth={depth + 1} />
       ))}
     </>
   );
