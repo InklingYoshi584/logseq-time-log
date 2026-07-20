@@ -240,48 +240,21 @@ export function groupDayTodosByPriority(todos: TodoBlock[]): Array<[string, Todo
 export async function moveTodoToJournal(blockUuid: string): Promise<number> {
   const d = new Date();
   const journalDay = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const pageName = `${yyyy}${mm}${dd}`;
 
-  // Look up today's journal page by the journal-day attribute
-  const pageQuery = `
-    [:find (pull ?p [:block/name]) .
-     :where
-     [?p :block/journal-day ${journalDay}]]
-  `;
-  const pageResult = (await runQuery(pageQuery)) as { name: string } | null;
-  const fallback = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
-  const pageName = pageResult?.name ?? fallback;
+  console.log("[time-log] moveTodoToJournal:", { blockUuid, journalDay, pageName });
 
-  const todosBlockUuid = await findOrCreateTodosBlock(pageName);
-  await logseq.Editor.insertBlock(todosBlockUuid, `((${blockUuid}))`, {
+  // Insert reference block directly as a page block on today's journal
+  const result = await logseq.Editor.insertBlock(pageName, `((${blockUuid}))`, {
+    isPageBlock: true,
     sibling: false,
   });
+  console.log("[time-log] insertBlock result:", result);
 
   return journalDay;
-}
-
-async function findOrCreateTodosBlock(pageName: string): Promise<string> {
-  const query = `
-    [:find (pull ?b [:block/uuid]) .
-     :where
-     [?b :block/page ?p]
-     [?p :block/name "${pageName}"]
-     [?b :block/content ?content]
-     [(clojure.string/includes? ?content "# Todos")]]
-  `;
-
-  const existing = (await runQuery(query)) as Array<{ uuid: string }> | null;
-
-  if (existing && existing.length > 0 && existing[0]?.uuid) {
-    return existing[0].uuid;
-  }
-
-  const block = await logseq.Editor.insertBlock(pageName, "# Todos", {
-    isPageBlock: true,
-    sibling: true,
-    properties: {},
-  });
-
-  return block?.uuid ?? "";
 }
 
 export function sortJournalTodos(todos: TodoBlock[]): TodoBlock[] {
