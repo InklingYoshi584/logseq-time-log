@@ -433,7 +433,7 @@ export default function App() {
 
   const handleTimeLogDragMove = useCallback((event: DragMoveEvent) => {
     const data = event.active.data.current as DragData | undefined;
-    if (!data || (data.type !== "journal-todo" && data.type !== "create-selection")) return;
+    if (!data) return;
     const scrollEl = gridScrollRef.current;
     if (!scrollEl || !event.active.rect.current.translated) return;
 
@@ -444,7 +444,7 @@ export default function App() {
     const minutes = (relativeY / timeLogHourHeight) * 60;
     const snapped = Math.round(minutes / 5) * 5;
     setDragOverMinutes(Math.max(0, Math.min(23 * 60 + 55, snapped)));
-}, [timeLogHourHeight]);
+  }, [timeLogHourHeight]);
   const handleTimeLogDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event;
     const data = active.data.current as DragData | undefined;
@@ -621,9 +621,29 @@ export default function App() {
           >
             <SplitView left={journalContent} right={rightContent} />
             <DragOverlay>
-              {dragActiveData?.type === "journal-todo" && dragOverMinutes !== null && (
+              {dragActiveData?.type === "journal-todo" && (
                 <div className="time-drag-overlay">
-                  {formatHM(dragOverMinutes)} - {formatHM(dragOverMinutes + 25)}
+                  {dragOverMinutes !== null
+                    ? `${formatHM(dragOverMinutes)} - ${formatHM(Math.min(24 * 60, dragOverMinutes + 25))}`
+                    : "Drop to schedule"}
+                </div>
+              )}
+              {dragActiveData?.type === "time-block" && dragActiveData.startMinutes !== undefined && dragActiveData.endMinutes !== undefined && (
+                <div className="time-drag-overlay" style={{
+                  height: `${Math.max(2, ((dragActiveData.endMinutes - dragActiveData.startMinutes) / 60) * timeLogHourHeight)}px`,
+                  minWidth: "120px",
+                }}>
+                  {formatHM(dragActiveData.startMinutes)} - {formatHM(dragActiveData.endMinutes)}
+                </div>
+              )}
+              {dragActiveData?.type === "time-block-top" && dragActiveData.endMinutes !== undefined && (
+                <div className="time-drag-overlay">
+                  {dragOverMinutes !== null ? formatHM(dragOverMinutes) : "…"} - {formatHM(dragActiveData.endMinutes)}
+                </div>
+              )}
+              {dragActiveData?.type === "time-block-bottom" && dragActiveData.startMinutes !== undefined && (
+                <div className="time-drag-overlay">
+                  {formatHM(dragActiveData.startMinutes)} - {dragOverMinutes !== null ? formatHM(dragOverMinutes) : "…"}
                 </div>
               )}
             </DragOverlay>

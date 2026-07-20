@@ -1113,7 +1113,7 @@ html, body, #root {
 .time-block {
   position: absolute;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 14px;
   overflow: hidden;
   cursor: grab;
   z-index: 1;
@@ -1188,7 +1188,7 @@ html, body, #root {
   overflow: hidden;
 }
 .time-block-time {
-  font-size: 10px;
+  font-size: 13px;
   opacity: 0.85;
   font-family: var(--font-mono);
   white-space: nowrap;
@@ -1200,7 +1200,7 @@ html, body, #root {
   opacity: 0.65;
 }
 .time-block-activity {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
@@ -1210,7 +1210,7 @@ html, body, #root {
   min-width: 0;
 }
 .time-block-icon {
-  font-size: 11px;
+  font-size: 13px;
   opacity: 0.7;
   position: absolute;
   top: 2px;
@@ -1262,7 +1262,8 @@ html, body, #root {
   background: var(--ls-accent, var(--accent));
   color: #fff;
   border-radius: var(--radius);
-  font-size: 12px;
+  font-size: 15px;
+  font-weight: 500;
   font-family: var(--font-mono);
   box-shadow: 0 4px 16px rgba(0,0,0,0.3);
   white-space: nowrap;
