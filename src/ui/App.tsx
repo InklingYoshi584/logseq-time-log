@@ -205,8 +205,10 @@ export default function App() {
   }, [selectedDay]);
 
   const handleReorder = useCallback(async (activeUuid: string, overUuid: string) => {
+    console.log("[time-log] handleReorder:", activeUuid, overUuid);
     try {
       await logseq.Editor.moveBlock(activeUuid, overUuid, { before: false });
+      console.log("[time-log] moveBlock done");
       if (selectedDay !== null) {
         const todos = await queryDayTodos(selectedDay);
         setDayTodos(todos);
