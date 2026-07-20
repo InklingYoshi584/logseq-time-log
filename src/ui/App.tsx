@@ -629,7 +629,7 @@ export default function App() {
                 </div>
               )}
               {dragActiveData?.type === "time-block" && dragActiveData.startMinutes !== undefined && dragActiveData.endMinutes !== undefined && (
-                <div className="time-drag-overlay" style={{
+                <div className="time-drag-overlay time-drag-overlay--block" style={{
                   height: `${Math.max(2, ((dragActiveData.endMinutes - dragActiveData.startMinutes) / 60) * timeLogHourHeight)}px`,
                   minWidth: "120px",
                 }}>
@@ -637,14 +637,30 @@ export default function App() {
                 </div>
               )}
               {dragActiveData?.type === "time-block-top" && dragActiveData.endMinutes !== undefined && (
-                <div className="time-drag-overlay">
-                  {dragOverMinutes !== null ? formatHM(dragOverMinutes) : "…"} - {formatHM(dragActiveData.endMinutes)}
-                </div>
+                (() => {
+                  const end = dragActiveData.endMinutes!;
+                  const start = dragOverMinutes ?? (dragActiveData.startMinutes ?? end - 30);
+                  const h = Math.max(4, ((end - Math.max(0, Math.min(end - 5, start))) / 60) * timeLogHourHeight);
+                  const displayStart = Math.max(0, Math.min(end - 5, start));
+                  return (
+                    <div className="time-drag-overlay time-drag-overlay--block" style={{ height: `${h}px` }}>
+                      {formatHM(displayStart)} - {formatHM(end)}
+                    </div>
+                  );
+                })()
               )}
               {dragActiveData?.type === "time-block-bottom" && dragActiveData.startMinutes !== undefined && (
-                <div className="time-drag-overlay">
-                  {formatHM(dragActiveData.startMinutes)} - {dragOverMinutes !== null ? formatHM(dragOverMinutes) : "…"}
-                </div>
+                (() => {
+                  const start = dragActiveData.startMinutes!;
+                  const end = dragOverMinutes ?? (dragActiveData.endMinutes ?? start + 30);
+                  const h = Math.max(4, ((Math.min(24 * 60, Math.max(start + 5, end)) - start) / 60) * timeLogHourHeight);
+                  const displayEnd = Math.min(24 * 60, Math.max(start + 5, end));
+                  return (
+                    <div className="time-drag-overlay time-drag-overlay--block" style={{ height: `${h}px` }}>
+                      {formatHM(start)} - {formatHM(displayEnd)}
+                    </div>
+                  );
+                })()
               )}
             </DragOverlay>
           </DndContext>
