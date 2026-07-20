@@ -132,7 +132,7 @@ export async function queryJournalDaysWithTodos(year: number): Promise<Set<numbe
 /**
  * Query all TODO/DONE blocks for a specific journal day.
  */
-export async function queryDayTodos(journalDay: number): Promise<TodoBlock[]> {
+export async function queryDayTodos(journalDay: number, preserveOrder?: boolean): Promise<TodoBlock[]> {
  const query = `
     [:find (pull ?b [
       :block/uuid

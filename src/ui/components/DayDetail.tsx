@@ -19,7 +19,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type { TodoBlock, TodoPriority } from "../types";
 import {
-  sortDayTodos,
   groupDayTodosByPriority,
   findOrphanTodos,
   sweepToTodo,
@@ -60,8 +59,7 @@ export default function DayDetail({
 }: DayDetailProps) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
-  const sorted = useMemo(() => sortDayTodos(todos), [todos]);
-  const grouped = useMemo(() => groupDayTodosByPriority(sorted), [sorted]);
+  const grouped = useMemo(() => groupDayTodosByPriority(todos), [todos]);
 
   const sections = useMemo(() => {
     const map = new Map<string, TodoBlock[]>();
