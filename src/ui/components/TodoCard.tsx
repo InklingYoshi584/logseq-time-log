@@ -71,7 +71,6 @@ export default function TodoCard({ todo, draggable, onDelete, onChangeMarker, de
           <span className="todo-marker">{MARKER_LABELS[todo.marker] ?? todo.marker}</span>
         )}
 
-        {todo.priority && <span className="todo-priority">[{todo.priority}]</span>}
         <span className="todo-content">{todo.content}</span>
         {todo.duration && (
           <span className="todo-duration" title={`Time spent: ${todo.duration}`}>⏱ {todo.duration}</span>

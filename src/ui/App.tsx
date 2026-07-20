@@ -102,6 +102,24 @@ export default function App() {
       const pageResults = await queryAllTodos();
       const grouped = groupTodos(pageResults);
       setPageTodos(sortPageTodos(grouped.pages));
+
+      // Auto-select today
+      if (selectedDay === null) {
+        try {
+          const stateToday = await logseq.App.getStateFromStore("today") as unknown;
+          if (typeof stateToday === "string") {
+            const d = new Date(stateToday);
+            if (!isNaN(d.getTime())) {
+              const day = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+              setSelectedDay(day);
+              setDayLoading(true);
+              const todos = await queryDayTodos(day);
+              setDayTodos(todos);
+              setDayLoading(false);
+            }
+          }
+        } catch { /* ignore */ }
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("Failed to load:", err);
@@ -129,24 +147,6 @@ export default function App() {
       setDayLoading(false);
     }
   }, []);
-
-  // Default: open today's journal
-  useEffect(() => {
-    if (selectedDay === null && !loading) {
-      (async () => {
-        try {
-          const stateToday = await logseq.App.getStateFromStore("today") as unknown;
-          if (typeof stateToday === "string") {
-            const d = new Date(stateToday);
-            if (!isNaN(d.getTime())) {
-              const day = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
-              handleSelectDay(day);
-            }
-          }
-        } catch { /* ignore */ }
-      })();
-    }
-  }, [loading, selectedDay, handleSelectDay]);
 
   const handleBackToCalendar = useCallback(() => {
     setSelectedDay(null);
