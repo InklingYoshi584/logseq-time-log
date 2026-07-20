@@ -238,19 +238,38 @@ export function groupDayTodosByPriority(todos: TodoBlock[]): Array<[string, Todo
 /* ── Move to journal ── */
 
 export async function moveTodoToJournal(blockUuid: string): Promise<number> {
-  const d = new Date();
-  const journalDay = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
+  // Try to get today's date from Logseq's app state first (avoids iframe timezone skew)
+  let journalDay: number;
+  try {
+    const stateDate = await logseq.App.getStateFromStore("today") as number | null;
+    if (typeof stateDate === "number" && stateDate > 20000101) {
+      journalDay = stateDate;
+      console.log("[time-log] got today from state:", journalDay);
+    } else {
+      throw new Error("no valid today in state");
+    }
+  } catch {
+    const d = new Date();
+    journalDay = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+    console.log("[time-log] got today from JS Date:", journalDay);
+  }
+  const yyyy = Math.floor(journalDay / 10000);
+  const mm = String(Math.floor((journalDay % 10000) / 100)).padStart(2, "0");
+  const dd = String(journalDay % 100).padStart(2, "0");
   const pageName = `${yyyy}${mm}${dd}`;
 
   console.log("[time-log] moveTodoToJournal:", { blockUuid, journalDay, pageName });
 
-  // Insert reference block directly as a page block on today's journal
+  // Ensure the journal page exists as a proper journal page
+  const page = await logseq.Editor.createPage(pageName, {}, {
+    journal: true,
+    createFirstBlock: false,
+  });
+  console.log("[time-log] createPage result:", page);
+
   const result = await logseq.Editor.insertBlock(pageName, `((${blockUuid}))`, {
     isPageBlock: true,
-    sibling: false,
+    sibling: true,
   });
   console.log("[time-log] insertBlock result:", result);
 
