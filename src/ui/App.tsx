@@ -204,6 +204,18 @@ export default function App() {
     }
   }, [selectedDay]);
 
+  const handleEdit = useCallback(async (blockUuid: string, newContent: string) => {
+    try {
+      await logseq.Editor.updateBlock(blockUuid, newContent);
+      if (selectedDay !== null) {
+        const todos = await queryDayTodos(selectedDay);
+        setDayTodos(todos);
+      }
+    } catch (err) {
+      console.error("Failed to edit block:", err);
+    }
+  }, [selectedDay]);
+
   const handleReorder = useCallback(async (activeUuid: string, overUuid: string) => {
     console.log("[time-log] handleReorder:", activeUuid, overUuid);
     try {
@@ -333,6 +345,7 @@ export default function App() {
             setDayTodos(todos);
           }
         }}
+        onEdit={handleEdit}
         onReorder={handleReorder}
         onChangePriority={handleChangePriority}
       />

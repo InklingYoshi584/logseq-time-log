@@ -35,6 +35,7 @@ interface DayDetailProps {
   onChangeMarker: (blockUuid: string, marker: TodoBlock["marker"]) => void;
   onAddTodo: (text: string, priority: string) => void;
   onRefresh: () => void;
+  onEdit: (blockUuid: string, newContent: string) => void;
   onReorder: (activeUuid: string, overUuid: string) => void;
   onChangePriority: (blockUuid: string, priority: TodoPriority | null) => void;
 }
@@ -55,7 +56,7 @@ function priorityFromKey(key: string): TodoPriority | null {
 
 export default function DayDetail({
   journalDay, pageName, todos, loading, onBack, onDelete,
-  onChangeMarker, onAddTodo, onRefresh, onReorder, onChangePriority,
+  onChangeMarker, onAddTodo, onRefresh, onReorder, onChangePriority, onEdit,
 }: DayDetailProps) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -222,6 +223,7 @@ export default function DayDetail({
                 isDragging={activeId !== null}
                 onDelete={onDelete}
                 onChangeMarker={onChangeMarker}
+                onEdit={onEdit}
               />
             );
           })}
@@ -244,12 +246,13 @@ export default function DayDetail({
 
 function PrioritySection({
   priorityKey, label, items, isEmpty, isOver, isDragging,
-  onDelete, onChangeMarker,
+  onDelete, onChangeMarker, onEdit,
 }: {
   priorityKey: string; label: string; items: TodoBlock[];
   isEmpty: boolean; isOver: boolean; isDragging: boolean;
   onDelete: (uuid: string) => void;
   onChangeMarker: (uuid: string, marker: TodoBlock["marker"]) => void;
+  onEdit: (uuid: string, content: string) => void;
 }) {
   const { setNodeRef: setDroppableRef } = useDroppable({ id: priorityKey });
 
@@ -270,6 +273,7 @@ function PrioritySection({
               todo={todo}
               onDelete={onDelete}
               onChangeMarker={onChangeMarker}
+              onEdit={onEdit}
             />
           ))}
           {isEmpty && <div className="drop-zone-placeholder">Drop here</div>}
@@ -281,10 +285,11 @@ function PrioritySection({
 
 /* ── Sortable Todo Card ── */
 
-function SortableTodoCard({ todo, onDelete, onChangeMarker, depth = 0 }: {
+function SortableTodoCard({ todo, onDelete, onChangeMarker, onEdit, depth = 0 }: {
   todo: TodoBlock;
   onDelete: (uuid: string) => void;
   onChangeMarker: (uuid: string, marker: TodoBlock["marker"]) => void;
+  onEdit: (uuid: string, content: string) => void;
   depth?: number;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: todo.uuid });
@@ -296,6 +301,8 @@ function SortableTodoCard({ todo, onDelete, onChangeMarker, depth = 0 }: {
   };
 
   const toggleMarker = todo.marker === "TODO" ? "DOING" : todo.marker === "DOING" ? "TODO" : null;
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(todo.content);
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
@@ -304,46 +311,79 @@ function SortableTodoCard({ todo, onDelete, onChangeMarker, depth = 0 }: {
         style={{ paddingLeft: `${12 + Math.min(depth, 8) * 20}px` }}
         data-depth={Math.min(depth, 8)}
       >
-        <button
-          type="button"
-          className={`todo-checkbox${todo.marker === "DONE" ? " checked" : ""}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onChangeMarker(todo.uuid, todo.marker === "DONE" ? "TODO" : "DONE");
-          }}
-          title={todo.marker === "DONE" ? "Mark as TODO" : "Mark as DONE"}
-          aria-label="Toggle done"
-        />
-        {toggleMarker ? (
-          <button
-            type="button"
-            className="todo-marker todo-marker--clickable"
-            onClick={(e) => {
-              e.stopPropagation();
-              onChangeMarker(todo.uuid, toggleMarker);
+        {editing ? (
+          <input
+            type="text"
+            className="todo-edit-input"
+            value={editText}
+            onChange={(e) => setEditText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                onEdit(todo.uuid, editText);
+                setEditing(false);
+              } else if (e.key === "Escape") {
+                setEditing(false);
+                setEditText(todo.content);
+              }
             }}
-            title={`Change to ${MARKER_BADGE[toggleMarker]}`}
-          >
-            {MARKER_BADGE[todo.marker]}
-          </button>
+            onBlur={() => {
+              onEdit(todo.uuid, editText);
+              setEditing(false);
+            }}
+            autoFocus
+          />
         ) : (
-          <span className="todo-marker">{MARKER_BADGE[todo.marker]}</span>
+          <>
+            <button
+              type="button"
+              className={`todo-checkbox${todo.marker === "DONE" ? " checked" : ""}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onChangeMarker(todo.uuid, todo.marker === "DONE" ? "TODO" : "DONE");
+              }}
+              title={todo.marker === "DONE" ? "Mark as TODO" : "Mark as DONE"}
+              aria-label="Toggle done"
+            />
+            {toggleMarker ? (
+              <button
+                type="button"
+                className="todo-marker todo-marker--clickable"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChangeMarker(todo.uuid, toggleMarker);
+                }}
+                title={`Change to ${MARKER_BADGE[toggleMarker]}`}
+              >
+                {MARKER_BADGE[todo.marker]}
+              </button>
+            ) : (
+              <span className="todo-marker">{MARKER_BADGE[todo.marker]}</span>
+            )}
+            <span className="todo-content">{todo.content}</span>
+            {todo.duration && (
+              <span className="todo-duration" title={`Time spent: ${todo.duration}`}>⏱ {todo.duration}</span>
+            )}
+            <button
+              type="button"
+              className="todo-edit-btn"
+              onClick={(e) => { e.stopPropagation(); setEditing(true); }}
+              title="Edit"
+            >
+              ✎
+            </button>
+            <button
+              type="button"
+              className="todo-delete-btn"
+              onClick={(e) => { e.stopPropagation(); onDelete(todo.uuid); }}
+              title="Delete"
+            >
+              ✕
+            </button>
+          </>
         )}
-        <span className="todo-content">{todo.content}</span>
-        {todo.duration && (
-          <span className="todo-duration" title={`Time spent: ${todo.duration}`}>⏱ {todo.duration}</span>
-        )}
-        <button
-          type="button"
-          className="todo-delete-btn"
-          onClick={(e) => { e.stopPropagation(); onDelete(todo.uuid); }}
-          title="Delete"
-        >
-          ✕
-        </button>
       </div>
       {todo.children?.map((child) => (
-        <SortableTodoCard key={child.uuid} todo={child} onDelete={onDelete} onChangeMarker={onChangeMarker} depth={depth + 1} />
+        <SortableTodoCard key={child.uuid} todo={child} onDelete={onDelete} onChangeMarker={onChangeMarker} onEdit={onEdit} depth={depth + 1} />
       ))}
     </div>
   );

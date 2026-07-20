@@ -306,6 +306,44 @@ html, body, #root {
   margin-left: auto;
 }
 
+.todo-edit-btn {
+  display: none;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, color 0.12s;
+}
+
+.todo-card--deletable:hover .todo-edit-btn {
+  display: flex;
+}
+
+.todo-edit-btn:hover {
+  background: var(--ls-accent, var(--accent));
+  color: #fff;
+}
+
+.todo-edit-input {
+  flex: 1;
+  padding: 2px 6px;
+  border: 1px solid var(--ls-accent, var(--accent));
+  border-radius: 3px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font);
+  outline: none;
+  min-width: 0;
+}
+
 .todo-delete-btn {
   display: none;
   width: 22px;
