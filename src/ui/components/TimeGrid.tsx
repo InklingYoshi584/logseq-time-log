@@ -6,12 +6,12 @@ import HourMarkers from "./HourMarkers";
 import CurrentTimeLine from "./CurrentTimeLine";
 
 interface TimeGridProps {
-  entries: TimeLogEntry[];
-  hourHeight: number;
-  selectedBlockUuid: string | null;
-  onSelectBlock: (uuid: string | null) => void;
-  onDoubleClickBlock: (uuid: string) => void;
-  onDeleteBlock: (uuid: string) => void;
+ entries: TimeLogEntry[];
+ hourHeight: number;
+ selectedBlockUuid: string | null;
+ onSelectBlock: (uuid: string | null) => void;
+ onDoubleClickBlock: (uuid: string) => void;
+ onDeleteBlock: (uuid: string) => void;
 }
 
 // Width of the hour marker column — must match .time-grid-markers in App.css
@@ -22,9 +22,9 @@ const MIN_BLOCK_HEIGHT = 2;
 const BLOCK_Z_INDEX = 2;
 
 interface LayoutItem {
-  entry: TimeLogEntry;
-  column: number;
-  totalColumns: number;
+ entry: TimeLogEntry;
+ column: number;
+ totalColumns: number;
 }
 
 /**
@@ -37,197 +37,197 @@ interface LayoutItem {
  *    totalColumns per group
  */
 function computeLayout(entries: TimeLogEntry[]): LayoutItem[] {
-  if (entries.length === 0) return [];
+ if (entries.length === 0) return [];
 
-  const sorted = [...entries].sort((a, b) => a.startMinutes - b.startMinutes);
+ const sorted = [...entries].sort((a, b) => a.startMinutes - b.startMinutes);
 
-  // ── Greedy column assignment ──
-  const columnMap = new Map<string, number>();
+ // ── Greedy column assignment ──
+ const columnMap = new Map<string, number>();
 
-  for (const entry of sorted) {
-    const usedCols = new Set<number>();
-    // Check all prior entries for overlap
-    for (const prev of sorted) {
-      if (prev.uuid === entry.uuid) break;
-      if (prev.endMinutes > entry.startMinutes) {
-        usedCols.add(columnMap.get(prev.uuid)!);
-      }
-    }
-    let col = 0;
-    while (usedCols.has(col)) col++;
-    columnMap.set(entry.uuid, col);
+ for (const entry of sorted) {
+  const usedCols = new Set<number>();
+  // Check all prior entries for overlap
+  for (const prev of sorted) {
+   if (prev.uuid === entry.uuid) break;
+   if (prev.endMinutes > entry.startMinutes) {
+    usedCols.add(columnMap.get(prev.uuid)!);
+   }
+  }
+  let col = 0;
+  while (usedCols.has(col)) col++;
+  columnMap.set(entry.uuid, col);
+ }
+
+ // ── Find connected components (overlap groups) ──
+ // Adjacency: two entries overlap if a.start < b.end AND b.start < a.end
+ const adj = new Map<string, string[]>();
+ for (const a of sorted) {
+  const neighbors: string[] = [];
+  for (const b of sorted) {
+   if (a.uuid === b.uuid) continue;
+   if (a.startMinutes < b.endMinutes && b.startMinutes < a.endMinutes) {
+    neighbors.push(b.uuid);
+   }
+  }
+  adj.set(a.uuid, neighbors);
+ }
+
+ const visited = new Set<string>();
+ const groupMap = new Map<string, number>();
+
+ for (const entry of sorted) {
+  if (visited.has(entry.uuid)) continue;
+
+  // DFS to collect the component
+  const group: string[] = [];
+  const stack = [entry.uuid];
+  while (stack.length > 0) {
+   const uuid = stack.pop()!;
+   if (visited.has(uuid)) continue;
+   visited.add(uuid);
+   group.push(uuid);
+   for (const neighbor of adj.get(uuid) || []) {
+    if (!visited.has(neighbor)) stack.push(neighbor);
+   }
   }
 
-  // ── Find connected components (overlap groups) ──
-  // Adjacency: two entries overlap if a.start < b.end AND b.start < a.end
-  const adj = new Map<string, string[]>();
-  for (const a of sorted) {
-    const neighbors: string[] = [];
-    for (const b of sorted) {
-      if (a.uuid === b.uuid) continue;
-      if (a.startMinutes < b.endMinutes && b.startMinutes < a.endMinutes) {
-        neighbors.push(b.uuid);
-      }
-    }
-    adj.set(a.uuid, neighbors);
+  let maxCol = 0;
+  for (const uuid of group) {
+   const col = columnMap.get(uuid)!;
+   if (col > maxCol) maxCol = col;
   }
-
-  const visited = new Set<string>();
-  const groupMap = new Map<string, number>();
-
-  for (const entry of sorted) {
-    if (visited.has(entry.uuid)) continue;
-
-    // DFS to collect the component
-    const group: string[] = [];
-    const stack = [entry.uuid];
-    while (stack.length > 0) {
-      const uuid = stack.pop()!;
-      if (visited.has(uuid)) continue;
-      visited.add(uuid);
-      group.push(uuid);
-      for (const neighbor of adj.get(uuid) || []) {
-        if (!visited.has(neighbor)) stack.push(neighbor);
-      }
-    }
-
-    let maxCol = 0;
-    for (const uuid of group) {
-      const col = columnMap.get(uuid)!;
-      if (col > maxCol) maxCol = col;
-    }
-    const total = maxCol + 1;
-    for (const uuid of group) {
-      groupMap.set(uuid, total);
-    }
+  const total = maxCol + 1;
+  for (const uuid of group) {
+   groupMap.set(uuid, total);
   }
+ }
 
-  return sorted.map((entry) => ({
-    entry,
-    column: columnMap.get(entry.uuid)!,
-    totalColumns: groupMap.get(entry.uuid)!,
-  }));
+ return sorted.map((entry) => ({
+  entry,
+  column: columnMap.get(entry.uuid)!,
+  totalColumns: groupMap.get(entry.uuid)!,
+ }));
 }
 
 export default function TimeGrid({
-  entries,
-  hourHeight,
-  selectedBlockUuid,
-  onSelectBlock,
-  onDoubleClickBlock,
-  onDeleteBlock,
+ entries,
+ hourHeight,
+ selectedBlockUuid,
+ onSelectBlock,
+ onDoubleClickBlock,
+ onDeleteBlock,
 }: TimeGridProps) {
-  const gridContainerRef = useRef<HTMLDivElement>(null);
+ const gridContainerRef = useRef<HTMLDivElement>(null);
 
-  // ── Droppable zone for journal-todo drops ──
-  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
-    id: "time-grid-zone",
-  });
+ // ── Droppable zone for journal-todo drops ──
+ const { setNodeRef: setDroppableRef, isOver } = useDroppable({
+  id: "time-grid-zone",
+ });
 
-  // ── Create overlay draggable for click-drag-to-create ──
-  const {
-    setNodeRef: setOverlayRef,
-    listeners: overlayListeners,
-    attributes: overlayAttrs,
-  } = useDraggable({
-    id: "time-grid-overlay",
-    data: { type: "create-selection" },
-  });
+ // ── Create overlay draggable for click-drag-to-create ──
+ const {
+  setNodeRef: setOverlayRef,
+  listeners: overlayListeners,
+  attributes: overlayAttrs,
+ } = useDraggable({
+  id: "time-grid-overlay",
+  data: { type: "create-selection" },
+ });
 
-  // ── Current time line ──
-  const [currentTimeTop, setCurrentTimeTop] = useState<number>(() => {
-    const now = new Date();
-    const minutes = now.getHours() * 60 + now.getMinutes();
-    return (minutes / 60) * hourHeight;
-  });
+ // ── Current time line ──
+ const [currentTimeTop, setCurrentTimeTop] = useState<number>(() => {
+  const now = new Date();
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  return (minutes / 60) * hourHeight;
+ });
 
-  useEffect(() => {
-    const id = setInterval(() => {
-      const now = new Date();
-      const minutes = now.getHours() * 60 + now.getMinutes();
-      setCurrentTimeTop((minutes / 60) * hourHeight);
-    }, 60000);
-    return () => clearInterval(id);
-  }, [hourHeight]);
+ useEffect(() => {
+  const id = setInterval(() => {
+   const now = new Date();
+   const minutes = now.getHours() * 60 + now.getMinutes();
+   setCurrentTimeTop((minutes / 60) * hourHeight);
+  }, 60000);
+  return () => clearInterval(id);
+ }, [hourHeight]);
 
-  // ── Keyboard shortcuts ──
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        onSelectBlock(null);
-      } else if (e.key === "Delete" || e.key === "Backspace") {
-        if (selectedBlockUuid) {
-          onDeleteBlock(selectedBlockUuid);
-        }
-      }
+ // ── Keyboard shortcuts ──
+ useEffect(() => {
+  function handleKeyDown(e: KeyboardEvent) {
+   if (e.key === "Escape") {
+    onSelectBlock(null);
+   } else if (e.key === "Delete" || e.key === "Backspace") {
+    if (selectedBlockUuid) {
+     onDeleteBlock(selectedBlockUuid);
     }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onSelectBlock, onDeleteBlock, selectedBlockUuid]);
+   }
+  }
+  window.addEventListener("keydown", handleKeyDown);
+  return () => window.removeEventListener("keydown", handleKeyDown);
+ }, [onSelectBlock, onDeleteBlock, selectedBlockUuid]);
 
-  // ── Block layout ──
-  const layoutBlocks = useMemo(() => computeLayout(entries), [entries]);
+ // ── Block layout ──
+ const layoutBlocks = useMemo(() => computeLayout(entries), [entries]);
 
-  // ── Click on empty grid space to deselect ──
-  const handleGridZoneClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.target === e.currentTarget) {
-        onSelectBlock(null);
-      }
-    },
-    [onSelectBlock],
-  );
+ // ── Click on empty grid space to deselect ──
+ const handleGridZoneClick = useCallback(
+  (e: React.MouseEvent) => {
+   if (e.target === e.currentTarget) {
+    onSelectBlock(null);
+   }
+  },
+  [onSelectBlock],
+ );
 
-  const totalHeight = HOURS_PER_DAY * hourHeight;
+ const totalHeight = HOURS_PER_DAY * hourHeight;
 
-  return (
-    <div
-      className="time-grid"
-      ref={gridContainerRef}
-      style={{ height: totalHeight, position: "relative" }}
-    >
-      <HourMarkers hourHeight={hourHeight} />
-      <CurrentTimeLine top={currentTimeTop} />
+ return (
+  <div
+   className="time-grid"
+   ref={gridContainerRef}
+   style={{ minHeight: totalHeight }}
+  >
+   <HourMarkers hourHeight={hourHeight} />
+   <CurrentTimeLine top={currentTimeTop} />
 
-      <div
-        className={`time-grid-zone${isOver ? " time-grid-zone--over" : ""}`}
-        ref={setDroppableRef}
-        onClick={handleGridZoneClick}
-      >
-        {layoutBlocks.map(({ entry, column, totalColumns }) => {
-          const top = (entry.startMinutes / 60) * hourHeight;
-          const height = Math.max(
-            MIN_BLOCK_HEIGHT,
-            ((entry.endMinutes - entry.startMinutes) / 60) * hourHeight,
-          );
+   <div
+    className={`time-grid-zone${isOver ? " time-grid-zone--over" : ""}`}
+    ref={setDroppableRef}
+    onClick={handleGridZoneClick}
+   >
+    {layoutBlocks.map(({ entry, column, totalColumns }) => {
+     const top = (entry.startMinutes / 60) * hourHeight;
+     const height = Math.max(
+      MIN_BLOCK_HEIGHT,
+      Math.min(((entry.endMinutes - entry.startMinutes) / 60) * hourHeight, 24 * hourHeight - top),
+     );
 
-          return (
-            <TimeBlock
-              key={entry.uuid}
-              entry={entry}
-              style={{
-                position: "absolute",
-                top,
-                height,
-                left: `${(column / totalColumns) * 100}%`,
-                width: `${100 / totalColumns}%`,
-                zIndex: BLOCK_Z_INDEX,
-              }}
-              isSelected={selectedBlockUuid === entry.uuid}
-              onSelect={onSelectBlock}
-              onDoubleClick={onDoubleClickBlock}
-              onDelete={onDeleteBlock}
-            />
-          );
-        })}
-      </div>
-
-      <div
-        className="time-grid-create-overlay"
-        ref={setOverlayRef}
-        {...overlayListeners}
-        {...overlayAttrs}
+     return (
+      <TimeBlock
+       key={entry.uuid}
+       entry={entry}
+       style={{
+        position: "absolute",
+        top,
+        height,
+        left: `${(column / totalColumns) * 100}%`,
+        width: `${100 / totalColumns}%`,
+        zIndex: BLOCK_Z_INDEX,
+       }}
+       isSelected={selectedBlockUuid === entry.uuid}
+       onSelect={onSelectBlock}
+       onDoubleClick={onDoubleClickBlock}
+       onDelete={onDeleteBlock}
       />
-    </div>
-  );
+     );
+    })}
+   </div>
+
+   <div
+    className="time-grid-create-overlay"
+    ref={setOverlayRef}
+    {...overlayListeners}
+    {...overlayAttrs}
+   />
+  </div>
+ );
 }

@@ -1000,15 +1000,18 @@ html, body, #root {
 }
 
 /* ── Time Grid ── */
-.time-grid {
-  display: flex;
+.time-grid-scroll {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  position: relative;
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
+}
+
+.time-grid {
+  display: flex;
+  position: relative;
 }
 
 /* ── Hour Markers ── */

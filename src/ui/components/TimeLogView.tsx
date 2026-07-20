@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { TimeLogEntry } from "../types";
 import TimeGrid from "./TimeGrid";
 
@@ -6,6 +6,8 @@ interface TimeLogViewProps {
   journalDay: number;
   entries: TimeLogEntry[];
   loading: boolean;
+  hourHeight: number;
+  onHourHeightChange: (h: number) => void;
   selectedBlockUuid: string | null;
   onSelectBlock: (uuid: string | null) => void;
   onDoubleClickBlock: (uuid: string) => void;
@@ -40,13 +42,14 @@ export default function TimeLogView({
   journalDay,
   entries,
   loading,
+  hourHeight,
+  onHourHeightChange,
   selectedBlockUuid,
   onSelectBlock,
   onDoubleClickBlock,
   onDeleteBlock,
   onDayChange,
 }: TimeLogViewProps) {
-  const [hourHeight, setHourHeight] = useState(60);
   const gridRef = useRef<HTMLDivElement>(null);
 
   // Zoom: Ctrl+scroll
@@ -56,7 +59,7 @@ export default function TimeLogView({
     const onWheel = (e: WheelEvent) => {
       if (e.ctrlKey) {
         e.preventDefault();
-        setHourHeight((h) => Math.max(30, Math.min(120, h + (e.deltaY > 0 ? -10 : 10))));
+        onHourHeightChange(Math.max(30, Math.min(120, hourHeight + (e.deltaY > 0 ? -10 : 10))));
       }
     };
     grid.addEventListener("wheel", onWheel, { passive: false });
@@ -110,7 +113,7 @@ export default function TimeLogView({
         <div className="time-log-zoom">
           <button
             className="time-log-zoom-btn"
-            onClick={() => setHourHeight((h) => Math.max(30, h - 15))}
+            onClick={() => onHourHeightChange(Math.max(30, hourHeight - 15))}
           >
             −
           </button>
@@ -119,7 +122,7 @@ export default function TimeLogView({
           </span>
           <button
             className="time-log-zoom-btn"
-            onClick={() => setHourHeight((h) => Math.min(120, h + 15))}
+            onClick={() => onHourHeightChange(Math.min(120, hourHeight + 15))}
           >
             +
           </button>

@@ -68,6 +68,7 @@ export default function App() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createModalRange, setCreateModalRange] = useState<{ start: number; end: number } | null>(null);
   const [createModalName, setCreateModalName] = useState("");
+  const [timeLogHourHeight, setTimeLogHourHeight] = useState(60);
 
   /* ── Close / ESC ── */
   const handleClose = useCallback(() => {
@@ -380,10 +381,8 @@ export default function App() {
   }, [selectedDay]);
 
   /* ── Time Log DnD ── */
-  const DEFAULT_HOUR_HEIGHT = 60;
-
   function deltaToMinutes(deltaY: number): number {
-    return Math.round((deltaY / DEFAULT_HOUR_HEIGHT) * 60 / 5) * 5;
+    return Math.round((deltaY / timeLogHourHeight) * 60 / 5) * 5;
   }
 
   const computeDefaultMinutes = useCallback((): number => {
@@ -454,8 +453,8 @@ export default function App() {
     switch (data.type) {
       case "journal-todo": {
         if (overId !== "time-grid-zone" || !data.uuid || selectedDay === null) return;
-        const startMinutes = dragOverMinutes ?? computeDefaultMinutes();
-        const endMinutes = startMinutes + 25;
+        const startMinutes = computeDefaultMinutes();
+        const endMinutes = Math.min(24 * 60, startMinutes + 25);
         await createTimeLogEntryLoc(data.uuid, startMinutes, endMinutes);
         break;
       }
@@ -489,9 +488,8 @@ export default function App() {
       }
       case "create-selection": {
         if (selectedDay === null) return;
-        const deltaMinutes = deltaToMinutes(event.delta.y);
         const startMinutes = computeDefaultMinutes();
-        const endMinutes = Math.max(startMinutes + 15, startMinutes + deltaMinutes);
+        const endMinutes = Math.min(24 * 60, startMinutes + 30);
         setCreateModalRange({ start: startMinutes, end: endMinutes });
         setCreateModalName("");
         setCreateModalOpen(true);
@@ -588,6 +586,8 @@ export default function App() {
   ) : (
     <TimeLogView
       journalDay={selectedDay ?? Math.floor(new Date().getFullYear() * 10000 + (new Date().getMonth() + 1) * 100 + new Date().getDate())}
+      hourHeight={timeLogHourHeight}
+      onHourHeightChange={setTimeLogHourHeight}
       entries={timeLogEntries}
       loading={timeLogLoading}
       selectedBlockUuid={selectedBlockUuid}
