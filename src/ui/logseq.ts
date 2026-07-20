@@ -530,7 +530,7 @@ export async function moveTodoToJournal(blockUuid: string, targetDay?: number): 
  return effectiveDay;
 }
 
-async function resolveJournalPageName(day: number): Promise<string | null> {
+export async function resolveJournalPageName(day: number): Promise<string | null> {
  const query = `
     [:find (pull ?p [:block/name]) .
      :where

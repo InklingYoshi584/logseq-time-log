@@ -11,6 +11,7 @@ import {
   deleteTodoWithRefs,
   changeMarker,
   parseLogseqDate,
+  resolveJournalPageName,
 } from "./logseq";
 import HeaderBar from "./components/HeaderBar";
 import SplitView from "./components/SplitView";
@@ -204,10 +205,9 @@ export default function App() {
   const handleAddTodo = useCallback(async (text: string, priority: string) => {
     if (selectedDay === null) return;
     try {
-      const yyyy = Math.floor(selectedDay / 10000);
-      const mm = String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0");
-      const dd = String(selectedDay % 100).padStart(2, "0");
-      const pageName = `${yyyy}${mm}${dd}`;
+      const pageName = await resolveJournalPageName(selectedDay)
+        ?? `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`;
+      await logseq.Editor.createPage(pageName, {}, { journal: true, createFirstBlock: false });
       const prefix = priority ? `[#${priority}] ` : "";
       await logseq.Editor.insertBlock(pageName, `${prefix}TODO ${text}`, {
         isPageBlock: true,
