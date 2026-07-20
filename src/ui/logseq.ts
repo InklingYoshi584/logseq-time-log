@@ -237,7 +237,7 @@ export function groupDayTodosByPriority(todos: TodoBlock[]): Array<[string, Todo
 
 /* ── Move to journal ── */
 
-export async function moveTodoToJournal(blockUuid: string): Promise<number> {
+export async function moveTodoToJournal(blockUuid: string, content: string): Promise<number> {
   // Try to get today's date from Logseq's app state first (avoids iframe timezone skew)
   let journalDay: number;
   try {
@@ -266,14 +266,37 @@ export async function moveTodoToJournal(blockUuid: string): Promise<number> {
     createFirstBlock: false,
   });
   console.log("[time-log] createPage result:", page);
+  if (!page) throw new Error("Failed to create journal page");
 
-  const result = await logseq.Editor.insertBlock(pageName, `((${blockUuid}))`, {
-    isPageBlock: true,
-    sibling: true,
+  // Find or create the # Todos block, then insert reference as a child
+  const todosBlockUuid = await findOrCreateTodosBlock(page);
+  const text = content ? `${content} ((${blockUuid}))` : `((${blockUuid}))`;
+  const result = await logseq.Editor.insertBlock(todosBlockUuid, text, {
+    sibling: false,
   });
   console.log("[time-log] insertBlock result:", result);
 
   return journalDay;
+}
+
+async function findOrCreateTodosBlock(page: { uuid: string; name: string }): Promise<string> {
+  try {
+    const blocks = await logseq.Editor.getPageBlocksTree(page.name);
+    for (const block of blocks) {
+      if (block.content && typeof block.content === "string" && block.content.includes("# Todos")) {
+        return block.uuid;
+      }
+    }
+  } catch (err) {
+    console.warn("[time-log] getPageBlocksTree failed, creating new # Todos:", err);
+  }
+
+  const block = await logseq.Editor.insertBlock(page.name, "# Todos", {
+    isPageBlock: true,
+    sibling: true,
+    properties: {},
+  });
+  return block?.uuid ?? "";
 }
 
 export function sortJournalTodos(todos: TodoBlock[]): TodoBlock[] {

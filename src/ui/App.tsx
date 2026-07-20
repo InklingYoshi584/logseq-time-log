@@ -135,9 +135,9 @@ export default function App() {
 
   /* ── Drag to journal ── */
   const handleDropOnJournal = useCallback(
-    async (blockUuid: string) => {
+    async (blockUuid: string, content: string) => {
       try {
-        const journalDay = await moveTodoToJournal(blockUuid);
+        const journalDay = await moveTodoToJournal(blockUuid, content);
         // Immediately add the day to calendar data so it highlights
         setDaysByYear((prev) => {
           const next = new Map(prev);
@@ -161,8 +161,13 @@ export default function App() {
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
       onDrop={(e) => {
         e.preventDefault();
-        const uuid = e.dataTransfer.getData("text/plain");
-        if (uuid) handleDropOnJournal(uuid);
+        try {
+          const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+          if (data.uuid) handleDropOnJournal(data.uuid, data.content ?? "");
+        } catch {
+          const uuid = e.dataTransfer.getData("text/plain");
+          if (uuid) handleDropOnJournal(uuid, "");
+        }
       }}
     >
       <DayDetail
@@ -178,8 +183,13 @@ export default function App() {
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
       onDrop={(e) => {
         e.preventDefault();
-        const uuid = e.dataTransfer.getData("text/plain");
-        if (uuid) handleDropOnJournal(uuid);
+        try {
+          const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+          if (data.uuid) handleDropOnJournal(data.uuid, data.content ?? "");
+        } catch {
+          const uuid = e.dataTransfer.getData("text/plain");
+          if (uuid) handleDropOnJournal(uuid, "");
+        }
       }}
     >
       <CalendarView

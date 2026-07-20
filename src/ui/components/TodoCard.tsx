@@ -20,7 +20,7 @@ export default function TodoCard({ todo, draggable }: TodoCardProps) {
       draggable={draggable}
       onDragStart={(e) => {
         if (!draggable) return;
-        e.dataTransfer.setData("text/plain", todo.uuid);
+        e.dataTransfer.setData("text/plain", JSON.stringify({ uuid: todo.uuid, content: todo.content }));
         e.dataTransfer.effectAllowed = "copy";
       }}
     >
