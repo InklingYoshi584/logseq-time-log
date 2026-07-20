@@ -573,7 +573,7 @@ export async function queryPageTodosGroupedByTitle(pageName: string): Promise<Ar
     walk(child.children as Array<Record<string, unknown>> | undefined, title);
    } else {
     // Not a TODO — this becomes the new title for its children
-    const newTitle = String(child.content ?? "");
+    const newTitle = cleanContent(String(child.content ?? ""));
     walk(child.children as Array<Record<string, unknown>> | undefined, newTitle);
    }
   }
