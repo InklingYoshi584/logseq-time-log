@@ -99,7 +99,7 @@ export async function queryJournalDaysWithTodos(year: number): Promise<Set<numbe
     [:find ?day
      :where
      [?b :block/content ?content]
-     [(clojure.string/includes? ?content "((")]
+     [(clojure.string/includes? ?content "# Todos")]
      [?b :block/page ?p]
      [?p :block/journal-day ?day]
      [(>= ?day ${yStart})]
