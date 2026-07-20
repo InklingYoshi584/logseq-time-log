@@ -65,7 +65,7 @@ export default function DayDetail({ journalDay, pageName, todos, loading, onBack
         <AddTodoBar onAdd={onAddTodo} />
         <div className="add-todo-divider" />
         <div className="sweep-bar">
-          <button type="button" className="sweep-btn" onClick={handleOpenSweep}>
+          <button type="button" className="sweep-btn" onClick={handleOpenSweep} title="Sweep orphan TODOs under # Todo">
             🧹
           </button>
         </div>
