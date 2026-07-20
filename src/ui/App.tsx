@@ -56,13 +56,17 @@ function DragPreview({ data, overMinutes, hourHeight, entries }: {
       : "time-drag-overlay--event";
 
   if (data.type === "journal-todo") {
-    return (
-      <div className="time-drag-overlay">
-        {overMinutes !== null
-          ? `${formatHM(overMinutes)} - ${formatHM(Math.min(24 * 60, overMinutes + 25))}`
-          : "Drop to schedule"}
-      </div>
-    );
+    if (overMinutes !== null) {
+      const end = Math.min(24 * 60, overMinutes + 25);
+      const h = Math.max(4, ((end - overMinutes) / 60) * hourHeight);
+      return (
+        <div className="time-drag-overlay time-drag-overlay--block time-drag-overlay--task" style={{ height: `${h}px` }}>
+          <span className="time-drag-overlay-time">{formatHM(overMinutes)} - {formatHM(end)}</span>
+          <span className="time-drag-overlay-activity">New task</span>
+        </div>
+      );
+    }
+    return <div className="time-drag-overlay">Drop to schedule</div>;
   }
 
   if (data.type === "time-block" && data.startMinutes !== undefined && data.endMinutes !== undefined) {

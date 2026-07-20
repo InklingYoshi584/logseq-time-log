@@ -1278,6 +1278,11 @@ html, body, #root {
   min-width: 100px;
   font-size: 13px;
 }
+.time-drag-overlay--task { background: var(--ls-accent, var(--accent)); color: #fff; }
+.time-drag-overlay--event { background: #f59e0b; color: #1a1a1a; }
+.time-drag-overlay--clock { background: color-mix(in srgb, var(--ls-accent, #60a5fa) 18%, var(--bg-elevated, #e5e7eb) 82%); color: var(--text-secondary); }
+.time-drag-overlay-time { font-family: var(--font-mono); font-size: 12px; opacity: 0.85; margin-right: 6px; white-space: nowrap; }
+.time-drag-overlay-activity { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ── Drag Handle on Journal TODOs ── */
 .todo-drag-handle {
