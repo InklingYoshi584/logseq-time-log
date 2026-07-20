@@ -103,11 +103,13 @@ export async function queryJournalDaysWithTodos(year: number): Promise<Set<numbe
      [(<= ?day ${yEnd})]]
   `;
  const refRaw = await runQuery(refQuery) as number[] | null;
+ console.log("[time-log] ref days query result:", refRaw);
  if (refRaw) {
   for (const d of refRaw.flat(2)) {
    if (typeof d === "number") days.add(d);
   }
  }
+ console.log("[time-log] total days after merge:", days.size, [...days]);
 
  return days;
 }
