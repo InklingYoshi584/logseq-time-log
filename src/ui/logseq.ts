@@ -240,19 +240,18 @@ export function groupDayTodosByPriority(todos: TodoBlock[]): Array<[string, Todo
 export async function moveTodoToJournal(blockUuid: string, content: string): Promise<number> {
   let journalDay: number;
   try {
-    const stateDate = await logseq.App.getStateFromStore("today") as number | null;
-    console.log("[time-log] raw state today:", stateDate, typeof stateDate);
-    if (typeof stateDate === "number" && stateDate > 20000101) {
-      journalDay = stateDate;
-    } else if (!stateDate) {
-      // Try alternate paths
-      const altDate = await logseq.App.getStateFromStore("date/today") as number | null;
-      console.log("[time-log] raw state date/today:", altDate);
-      if (typeof altDate === "number" && altDate > 20000101) {
-        journalDay = altDate;
+    const stateToday = await logseq.App.getStateFromStore("today") as unknown;
+    console.log("[time-log] raw state today:", stateToday, typeof stateToday);
+    if (typeof stateToday === "string") {
+      // State returns formatted string like "Jul 20th, 2026"
+      const parsed = new Date(stateToday);
+      if (!isNaN(parsed.getTime())) {
+        journalDay = parsed.getFullYear() * 10000 + (parsed.getMonth() + 1) * 100 + parsed.getDate();
       } else {
-        throw new Error("no valid today in state");
+        throw new Error("could not parse state date string");
       }
+    } else if (typeof stateToday === "number" && stateToday > 20000101) {
+      journalDay = stateToday;
     } else {
       throw new Error("no valid today in state");
     }
@@ -276,6 +275,13 @@ export async function moveTodoToJournal(blockUuid: string, content: string): Pro
     sibling: false,
   });
   console.log("[time-log] insertBlock result:", result);
+
+  // Expand the # Todos block so the user can see what was added
+  try {
+    await logseq.Editor.setBlockCollapsed(todosBlockUuid, { flag: false });
+  } catch {
+    // ignore if not supported
+  }
 
   return journalDay;
 }
