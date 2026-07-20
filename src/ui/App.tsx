@@ -206,7 +206,16 @@ export default function App() {
 
   const handleEdit = useCallback(async (blockUuid: string, newContent: string) => {
     try {
-      await logseq.Editor.updateBlock(blockUuid, newContent);
+      const block = await logseq.Editor.getBlock(blockUuid);
+      if (!block?.content) return;
+      // Reconstruct full content: preserve marker + priority, replace body
+      const raw = block.content as string;
+      const markerMatch = raw.match(/^(TODO|DOING|DONE|NOW|LATER|WAITING)\s+/i);
+      const priorityMatch = raw.match(/\[#(A|B|C)\]\s*/);
+      let prefix = "";
+      if (markerMatch) prefix += markerMatch[0];
+      if (priorityMatch) prefix += priorityMatch[0];
+      await logseq.Editor.updateBlock(blockUuid, prefix + newContent);
       if (selectedDay !== null) {
         const todos = await queryDayTodos(selectedDay);
         setDayTodos(todos);
