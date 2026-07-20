@@ -61,36 +61,38 @@ export default function DayDetail({ journalDay, pageName, todos, loading, onBack
         <h2 className="day-detail-date">{formatDay(journalDay)}</h2>
       </div>
 
-      <AddTodoBar onAdd={onAddTodo} />
-
-      <div className="sweep-bar">
-        <button type="button" className="sweep-btn" onClick={handleOpenSweep}>
-          🧹 Sweep
-        </button>
-        {sweepOpen && (
-          <div className="sweep-popup">
-            <div className="sweep-popup-header">
-              <span>Orphan TODOs</span>
-              <button type="button" className="sweep-close" onClick={() => setSweepOpen(false)}>✕</button>
-            </div>
-            {orphans.length === 0 ? (
-              <p className="sweep-empty">No orphan TODOs found.</p>
-            ) : (
-              orphans.map((o) => (
-                <button
-                  key={o.uuid}
-                  type="button"
-                  className="sweep-item"
-                  onClick={() => handleSweep(o.uuid)}
-                >
-                  <span className={`todo-marker marker-${o.marker.toLowerCase()}`}>{o.marker}</span>
-                  <span>{o.content}</span>
-                </button>
-              ))
-            )}
-          </div>
-        )}
+      <div className="add-todo-row">
+        <AddTodoBar onAdd={onAddTodo} />
+        <div className="add-todo-divider" />
+        <div className="sweep-bar">
+          <button type="button" className="sweep-btn" onClick={handleOpenSweep}>
+            🧹
+          </button>
+        </div>
       </div>
+      {sweepOpen && (
+        <div className="sweep-popup">
+          <div className="sweep-popup-header">
+            <span>Orphan TODOs</span>
+            <button type="button" className="sweep-close" onClick={() => setSweepOpen(false)}>✕</button>
+          </div>
+          {orphans.length === 0 ? (
+            <p className="sweep-empty">No orphan TODOs found.</p>
+          ) : (
+            orphans.map((o) => (
+              <button
+                key={o.uuid}
+                type="button"
+                className="sweep-item"
+                onClick={() => handleSweep(o.uuid)}
+              >
+                <span className={`todo-marker marker-${o.marker.toLowerCase()}`}>{o.marker}</span>
+                <span>{o.content}</span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
 
       {grouped.length === 0 ? (
         <p className="todo-empty">No tasks for this day.</p>
@@ -108,7 +110,7 @@ export default function DayDetail({ journalDay, pageName, todos, loading, onBack
           ))}
         </div>
       )}
-    </div>
+    </div >
   );
 }
 

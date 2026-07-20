@@ -706,9 +706,28 @@ html, body, #root {
   color: #fff;
   border-color: var(--ls-accent, var(--accent));
 }
+.add-todo-row {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+}
+
+.add-todo-row .add-todo-bar {
+  flex: 1;
+  border-bottom: none;
+}
+
+.add-todo-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
 .sweep-bar {
   position: relative;
-  padding: 4px 12px;
+  padding: 4px 8px;
+  flex-shrink: 0;
 }
 
 .sweep-btn {
@@ -729,7 +748,7 @@ html, body, #root {
 .sweep-popup {
   position: absolute;
   top: 100%;
-  left: 12px;
+  left: -120px;
   right: 12px;
   max-height: 200px;
   overflow-y: auto;
