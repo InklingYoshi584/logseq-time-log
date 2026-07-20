@@ -5,6 +5,7 @@ import TimeGrid from "./TimeGrid";
 interface TimeLogViewProps {
   journalDay: number;
   entries: TimeLogEntry[];
+  gridRef?: React.RefObject<HTMLDivElement>;
   loading: boolean;
   hourHeight: number;
   onHourHeightChange: (h: number) => void;
@@ -42,6 +43,7 @@ export default function TimeLogView({
   journalDay,
   entries,
   loading,
+  gridRef: propGridRef,
   hourHeight,
   onHourHeightChange,
   selectedBlockUuid,
@@ -50,7 +52,8 @@ export default function TimeLogView({
   onDeleteBlock,
   onDayChange,
 }: TimeLogViewProps) {
-  const gridRef = useRef<HTMLDivElement>(null);
+  const localRef = useRef<HTMLDivElement>(null);
+  const gridRef = propGridRef ?? localRef;
 
   // Zoom: Ctrl+scroll
   useEffect(() => {
@@ -59,7 +62,7 @@ export default function TimeLogView({
     const onWheel = (e: WheelEvent) => {
       if (e.ctrlKey) {
         e.preventDefault();
-        onHourHeightChange(Math.max(30, Math.min(120, hourHeight + (e.deltaY > 0 ? -10 : 10))));
+        onHourHeightChange(Math.max(15, Math.min(240, hourHeight + (e.deltaY > 0 ? -10 : 10))));
       }
     };
     grid.addEventListener("wheel", onWheel, { passive: false });
@@ -113,7 +116,7 @@ export default function TimeLogView({
         <div className="time-log-zoom">
           <button
             className="time-log-zoom-btn"
-            onClick={() => onHourHeightChange(Math.max(30, hourHeight - 15))}
+            onClick={() => onHourHeightChange(Math.max(15, hourHeight - 15))}
           >
             −
           </button>
@@ -122,7 +125,7 @@ export default function TimeLogView({
           </span>
           <button
             className="time-log-zoom-btn"
-            onClick={() => onHourHeightChange(Math.min(120, hourHeight + 15))}
+            onClick={() => onHourHeightChange(Math.min(240, hourHeight + 15))}
           >
             +
           </button>

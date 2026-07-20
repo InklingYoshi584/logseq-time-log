@@ -861,6 +861,22 @@ export async function queryTimeLogEntries(journalDay: number): Promise<TimeLogEn
   console.warn("[time-log] Failed to parse CLOCK entries:", err);
  }
 
+ // Post-process: resolve activity for task-linked entries with empty text
+ for (const entry of entries) {
+  if (!entry.activity.trim() && entry.todoUuid) {
+   try {
+    const refBlock = await logseq.Editor.getBlock(entry.todoUuid);
+    if (refBlock && refBlock.content) {
+     entry.activity = cleanContent(String(refBlock.content)) || "(task)";
+    } else {
+     entry.activity = "(task)";
+    }
+   } catch {
+    entry.activity = "(task)";
+   }
+  }
+ }
+
  return entries;
 }
 

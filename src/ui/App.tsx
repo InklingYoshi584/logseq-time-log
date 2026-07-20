@@ -69,6 +69,7 @@ export default function App() {
   const [createModalRange, setCreateModalRange] = useState<{ start: number; end: number } | null>(null);
   const [createModalName, setCreateModalName] = useState("");
   const [timeLogHourHeight, setTimeLogHourHeight] = useState(60);
+  const gridScrollRef = useRef<HTMLDivElement | null>(null);
 
   /* ── Close / ESC ── */
   const handleClose = useCallback(() => {
@@ -433,14 +434,17 @@ export default function App() {
   const handleTimeLogDragMove = useCallback((event: DragMoveEvent) => {
     const data = event.active.data.current as DragData | undefined;
     if (!data || (data.type !== "journal-todo" && data.type !== "create-selection")) return;
-    // Calculate time from pointer delta relative to grid (60px/hour)
-    const deltaMinutes = deltaToMinutes(event.delta.y);
-    if (data.type === "journal-todo") {
-      const startMinutes = computeDefaultMinutes() + deltaMinutes;
-      setDragOverMinutes(Math.max(0, Math.min(23 * 60 + 59, startMinutes)));
-    }
-  }, [computeDefaultMinutes]);
+    const scrollEl = gridScrollRef.current;
+    if (!scrollEl || !event.active.rect.current.translated) return;
 
+    const gridRect = scrollEl.getBoundingClientRect();
+    const translated = event.active.rect.current.translated;
+    const pointerY = translated.top + translated.height / 2;
+    const relativeY = pointerY - gridRect.top + scrollEl.scrollTop;
+    const minutes = (relativeY / timeLogHourHeight) * 60;
+    const snapped = Math.round(minutes / 5) * 5;
+    setDragOverMinutes(Math.max(0, Math.min(23 * 60 + 55, snapped)));
+}, [timeLogHourHeight]);
   const handleTimeLogDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event;
     const data = active.data.current as DragData | undefined;
@@ -453,7 +457,7 @@ export default function App() {
     switch (data.type) {
       case "journal-todo": {
         if (overId !== "time-grid-zone" || !data.uuid || selectedDay === null) return;
-        const startMinutes = computeDefaultMinutes();
+        const startMinutes = dragOverMinutes ?? computeDefaultMinutes();
         const endMinutes = Math.min(24 * 60, startMinutes + 25);
         await createTimeLogEntryLoc(data.uuid, startMinutes, endMinutes);
         break;
@@ -509,6 +513,7 @@ export default function App() {
   const journalContent = selectedDay !== null ? (
     <div
       className="journal-drop-zone"
+      style={dragActiveData ? { overflow: 'hidden' } : undefined}
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
       onDrop={(e) => {
         e.preventDefault();
@@ -547,6 +552,7 @@ export default function App() {
   ) : (
     <div
       className="journal-drop-zone"
+      style={dragActiveData ? { overflow: 'hidden' } : undefined}
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
       onDrop={(e) => {
         e.preventDefault();
@@ -586,6 +592,7 @@ export default function App() {
   ) : (
     <TimeLogView
       journalDay={selectedDay ?? Math.floor(new Date().getFullYear() * 10000 + (new Date().getMonth() + 1) * 100 + new Date().getDate())}
+      gridRef={gridScrollRef}
       hourHeight={timeLogHourHeight}
       onHourHeightChange={setTimeLogHourHeight}
       entries={timeLogEntries}
