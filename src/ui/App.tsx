@@ -218,13 +218,27 @@ export default function App() {
   const handleChangePriority = useCallback(async (blockUuid: string, priority: TodoPriority | null) => {
     try {
       const block = await logseq.Editor.getBlock(blockUuid);
-      if (!block?.content) return;
-      // Replace or remove [#A] prefix
-      let newContent = block.content.replace(/^\[#(A|B|C)\]\s*/, "");
-      if (priority) {
-        newContent = `[#${priority}] ${newContent}`;
+      let targetUuid = blockUuid;
+      let rawContent = block?.content;
+      // Resolve reference blocks
+      if (rawContent && typeof rawContent === "string") {
+        const refMatch = rawContent.match(/\(\(([a-f0-9-]+)\)\)/);
+        if (refMatch) {
+          targetUuid = refMatch[1];
+          const refBlock = await logseq.Editor.getBlock(refMatch[1]);
+          rawContent = refBlock?.content;
+        }
       }
-      await logseq.Editor.updateBlock(blockUuid, newContent);
+      if (!rawContent || typeof rawContent !== "string") return;
+      console.log("[time-log] changePriority:", { blockUuid, targetUuid, priority, rawContent });
+      // Strip existing priority tag, then add new one
+      let body = rawContent.replace(/^\[#(A|B|C)\]\s*/, "");
+      body = body.replace(/^(TODO|DOING|DONE|NOW|LATER|WAITING)\s+/i, "");
+      if (priority) {
+        body = `[#${priority}] ${body}`;
+      }
+      console.log("[time-log] changePriority new content:", body);
+      await logseq.Editor.updateBlock(targetUuid, body);
       if (selectedDay !== null) {
         const todos = await queryDayTodos(selectedDay);
         setDayTodos(todos);
