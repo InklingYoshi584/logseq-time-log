@@ -99,7 +99,7 @@ export async function queryJournalDaysWithTodos(year: number): Promise<Set<numbe
     [:find ?day
      :where
      [?b :block/content ?content]
-     [(clojure.string/includes? ?content "# Todos")]
+     [(clojure.string/includes? ?content "# Todo")]
      [?b :block/page ?p]
      [?p :block/journal-day ?day]
      [(>= ?day ${yStart})]
@@ -528,15 +528,15 @@ async function findOrCreateTodosBlock(pageName: string): Promise<string> {
  try {
   const blocks = await logseq.Editor.getPageBlocksTree(pageName);
   for (const block of blocks) {
-   if (block.content && typeof block.content === "string" && block.content.includes("# Todos")) {
+   if (block.content && typeof block.content === "string" && block.content.includes("# Todo")) {
     return block.uuid;
    }
   }
  } catch (err) {
-  console.warn("[time-log] getPageBlocksTree failed, creating new # Todos:", err);
+  console.warn("[time-log] getPageBlocksTree failed, creating new # Todo:", err);
  }
 
- const block = await logseq.Editor.insertBlock(pageName, "# Todos", {
+ const block = await logseq.Editor.insertBlock(pageName, "# Todo", {
   isPageBlock: true,
   sibling: true,
   properties: {},
