@@ -130,6 +130,24 @@ export default function App() {
     }
   }, []);
 
+  // Default: open today's journal
+  useEffect(() => {
+    if (selectedDay === null && !loading) {
+      (async () => {
+        try {
+          const stateToday = await logseq.App.getStateFromStore("today") as unknown;
+          if (typeof stateToday === "string") {
+            const d = new Date(stateToday);
+            if (!isNaN(d.getTime())) {
+              const day = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+              handleSelectDay(day);
+            }
+          }
+        } catch { /* ignore */ }
+      })();
+    }
+  }, [loading, selectedDay, handleSelectDay]);
+
   const handleBackToCalendar = useCallback(() => {
     setSelectedDay(null);
     setDayTodos([]);
