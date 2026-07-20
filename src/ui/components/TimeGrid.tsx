@@ -135,20 +135,21 @@ export default function TimeGrid({
  });
 
  // ── Current time line ──
- const [currentTimeTop, setCurrentTimeTop] = useState<number>(() => {
+ const [nowMinutes, setNowMinutes] = useState<number>(() => {
   const now = new Date();
-  const minutes = now.getHours() * 60 + now.getMinutes();
-  return (minutes / 60) * hourHeight;
+  return now.getHours() * 60 + now.getMinutes();
  });
 
  useEffect(() => {
-  const id = setInterval(() => {
+  const tick = () => {
    const now = new Date();
-   const minutes = now.getHours() * 60 + now.getMinutes();
-   setCurrentTimeTop((minutes / 60) * hourHeight);
-  }, 60000);
+   setNowMinutes(now.getHours() * 60 + now.getMinutes());
+  };
+  const id = setInterval(tick, 60000);
   return () => clearInterval(id);
- }, [hourHeight]);
+ }, []);
+
+ const currentTimeTop = (nowMinutes / 60) * hourHeight;
 
  // ── Keyboard shortcuts ──
  useEffect(() => {
