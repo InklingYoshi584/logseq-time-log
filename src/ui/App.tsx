@@ -44,6 +44,43 @@ function formatHM(minutes: number): string {
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
 
+function DragPreview({ data, overMinutes, hourHeight, entries }: {
+  data: DragData;
+  overMinutes: number | null;
+  hourHeight: number;
+  entries: TimeLogEntry[];
+}) {
+  const entry = data.uuid ? entries.find(e => e.uuid === data.uuid) : undefined;
+  const cls = entry?.isClockEntry ? "time-drag-overlay--clock"
+    : entry?.todoUuid ? "time-drag-overlay--task"
+      : "time-drag-overlay--event";
+
+  if (data.type === "journal-todo") {
+    return (
+      <div className="time-drag-overlay">
+        {overMinutes !== null
+          ? `${formatHM(overMinutes)} - ${formatHM(Math.min(24 * 60, overMinutes + 25))}`
+          : "Drop to schedule"}
+      </div>
+    );
+  }
+
+  if (data.type === "time-block" && data.startMinutes !== undefined && data.endMinutes !== undefined) {
+    const duration = data.endMinutes - data.startMinutes;
+    const h = Math.max(4, (duration / 60) * hourHeight);
+    const displayStart = overMinutes !== null ? overMinutes : data.startMinutes;
+    const displayEnd = displayStart + duration;
+    return (
+      <div className={`time-drag-overlay time-drag-overlay--block ${cls}`} style={{ height: `${h}px` }}>
+        <span className="time-drag-overlay-time">{formatHM(displayStart)} - {formatHM(Math.min(24 * 60, displayEnd))}</span>
+        {entry?.activity && <span className="time-drag-overlay-activity">{entry.activity}</span>}
+      </div>
+    );
+  }
+
+  return null;
+}
+
 export default function App() {
   const [pageTodos, setPageTodos] = useState<TodoBlock[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,6 +106,7 @@ export default function App() {
   const [createModalRange, setCreateModalRange] = useState<{ start: number; end: number } | null>(null);
   const [createModalName, setCreateModalName] = useState("");
   const [timeLogHourHeight, setTimeLogHourHeight] = useState(60);
+  const [resizeState, setResizeState] = useState<{ uuid: string; type: "top" | "bottom"; minutes: number } | null>(null);
   const gridScrollRef = useRef<HTMLDivElement | null>(null);
 
   /* ── Close / ESC ── */
@@ -444,12 +482,19 @@ export default function App() {
     const minutes = (relativeY / timeLogHourHeight) * 60;
     const snapped = Math.round(minutes / 5) * 5;
     setDragOverMinutes(Math.max(0, Math.min(23 * 60 + 55, snapped)));
+
+    if (data.type === "time-block-top" && data.uuid) {
+      setResizeState({ uuid: data.uuid, type: "top", minutes: snapped });
+    } else if (data.type === "time-block-bottom" && data.uuid) {
+      setResizeState({ uuid: data.uuid, type: "bottom", minutes: snapped });
+    }
   }, [timeLogHourHeight]);
   const handleTimeLogDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event;
     const data = active.data.current as DragData | undefined;
     setDragActiveData(null);
     setDragOverMinutes(null);
+    setResizeState(null);
     if (!data || !over) return;
 
     const overId = String(over.id);
@@ -595,6 +640,7 @@ export default function App() {
       gridRef={gridScrollRef}
       hourHeight={timeLogHourHeight}
       onHourHeightChange={setTimeLogHourHeight}
+      resizeState={resizeState}
       entries={timeLogEntries}
       loading={timeLogLoading}
       selectedBlockUuid={selectedBlockUuid}
@@ -621,47 +667,7 @@ export default function App() {
           >
             <SplitView left={journalContent} right={rightContent} />
             <DragOverlay>
-              {dragActiveData?.type === "journal-todo" && (
-                <div className="time-drag-overlay">
-                  {dragOverMinutes !== null
-                    ? `${formatHM(dragOverMinutes)} - ${formatHM(Math.min(24 * 60, dragOverMinutes + 25))}`
-                    : "Drop to schedule"}
-                </div>
-              )}
-              {dragActiveData?.type === "time-block" && dragActiveData.startMinutes !== undefined && dragActiveData.endMinutes !== undefined && (
-                <div className="time-drag-overlay time-drag-overlay--block" style={{
-                  height: `${Math.max(2, ((dragActiveData.endMinutes - dragActiveData.startMinutes) / 60) * timeLogHourHeight)}px`,
-                  minWidth: "120px",
-                }}>
-                  {formatHM(dragActiveData.startMinutes)} - {formatHM(dragActiveData.endMinutes)}
-                </div>
-              )}
-              {dragActiveData?.type === "time-block-top" && dragActiveData.endMinutes !== undefined && (
-                (() => {
-                  const end = dragActiveData.endMinutes!;
-                  const start = dragOverMinutes ?? (dragActiveData.startMinutes ?? end - 30);
-                  const h = Math.max(4, ((end - Math.max(0, Math.min(end - 5, start))) / 60) * timeLogHourHeight);
-                  const displayStart = Math.max(0, Math.min(end - 5, start));
-                  return (
-                    <div className="time-drag-overlay time-drag-overlay--block" style={{ height: `${h}px` }}>
-                      {formatHM(displayStart)} - {formatHM(end)}
-                    </div>
-                  );
-                })()
-              )}
-              {dragActiveData?.type === "time-block-bottom" && dragActiveData.startMinutes !== undefined && (
-                (() => {
-                  const start = dragActiveData.startMinutes!;
-                  const end = dragOverMinutes ?? (dragActiveData.endMinutes ?? start + 30);
-                  const h = Math.max(4, ((Math.min(24 * 60, Math.max(start + 5, end)) - start) / 60) * timeLogHourHeight);
-                  const displayEnd = Math.min(24 * 60, Math.max(start + 5, end));
-                  return (
-                    <div className="time-drag-overlay time-drag-overlay--block" style={{ height: `${h}px` }}>
-                      {formatHM(start)} - {formatHM(displayEnd)}
-                    </div>
-                  );
-                })()
-              )}
+              {dragActiveData && <DragPreview data={dragActiveData} overMinutes={dragOverMinutes} hourHeight={timeLogHourHeight} entries={timeLogEntries} />}
             </DragOverlay>
           </DndContext>
         )}

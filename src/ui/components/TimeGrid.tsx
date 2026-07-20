@@ -8,6 +8,7 @@ import CurrentTimeLine from "./CurrentTimeLine";
 interface TimeGridProps {
  entries: TimeLogEntry[];
  hourHeight: number;
+ resizeState?: { uuid: string; type: "top" | "bottom"; minutes: number } | null;
  selectedBlockUuid: string | null;
  onSelectBlock: (uuid: string | null) => void;
  onDoubleClickBlock: (uuid: string) => void;
@@ -112,6 +113,7 @@ function computeLayout(entries: TimeLogEntry[]): LayoutItem[] {
 export default function TimeGrid({
  entries,
  hourHeight,
+ resizeState,
  selectedBlockUuid,
  onSelectBlock,
  onDoubleClickBlock,
@@ -196,10 +198,19 @@ export default function TimeGrid({
     onClick={handleGridZoneClick}
    >
     {layoutBlocks.map(({ entry, column, totalColumns }) => {
-     const top = (entry.startMinutes / 60) * hourHeight;
+     let displayStart = entry.startMinutes;
+     let displayEnd = entry.endMinutes;
+     if (resizeState && resizeState.uuid === entry.uuid) {
+      if (resizeState.type === "top") {
+       displayStart = Math.max(0, Math.min(displayEnd - 5, resizeState.minutes));
+      } else {
+       displayEnd = Math.min(24 * 60, Math.max(displayStart + 5, resizeState.minutes));
+      }
+     }
+     const top = (displayStart / 60) * hourHeight;
      const height = Math.max(
       MIN_BLOCK_HEIGHT,
-      Math.min(((entry.endMinutes - entry.startMinutes) / 60) * hourHeight, 24 * hourHeight - top),
+      Math.min(((displayEnd - displayStart) / 60) * hourHeight, 24 * hourHeight - top),
      );
 
      return (

@@ -9,6 +9,7 @@ interface TimeLogViewProps {
   loading: boolean;
   hourHeight: number;
   onHourHeightChange: (h: number) => void;
+  resizeState: { uuid: string; type: "top" | "bottom"; minutes: number } | null;
   selectedBlockUuid: string | null;
   onSelectBlock: (uuid: string | null) => void;
   onDoubleClickBlock: (uuid: string) => void;
@@ -46,6 +47,7 @@ export default function TimeLogView({
   gridRef: propGridRef,
   hourHeight,
   onHourHeightChange,
+  resizeState,
   selectedBlockUuid,
   onSelectBlock,
   onDoubleClickBlock,
@@ -62,7 +64,7 @@ export default function TimeLogView({
     const onWheel = (e: WheelEvent) => {
       if (e.ctrlKey) {
         e.preventDefault();
-        onHourHeightChange(Math.max(15, Math.min(240, hourHeight + (e.deltaY > 0 ? -10 : 10))));
+        onHourHeightChange(Math.max(30, Math.min(240, hourHeight + (e.deltaY > 0 ? -10 : 10))));
       }
     };
     grid.addEventListener("wheel", onWheel, { passive: false });
@@ -116,7 +118,7 @@ export default function TimeLogView({
         <div className="time-log-zoom">
           <button
             className="time-log-zoom-btn"
-            onClick={() => onHourHeightChange(Math.max(15, hourHeight - 15))}
+            onClick={() => onHourHeightChange(Math.max(30, hourHeight - 15))}
           >
             −
           </button>
@@ -138,6 +140,7 @@ export default function TimeLogView({
           <TimeGrid
             entries={entries}
             hourHeight={hourHeight}
+            resizeState={resizeState}
             selectedBlockUuid={selectedBlockUuid}
             onSelectBlock={onSelectBlock}
             onDoubleClickBlock={onDoubleClickBlock}
