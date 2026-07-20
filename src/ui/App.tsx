@@ -232,13 +232,10 @@ export default function App() {
       if (!rawContent || typeof rawContent !== "string") return;
       console.log("[time-log] changePriority:", { blockUuid, targetUuid, priority, rawContent });
       // Replace or add priority tag, preserve the rest
-      let body = rawContent.replace(/^\[#(A|B|C)\]\s*/, "");
+      let body = rawContent.replace(/\[#(A|B|C)\]\s*/g, "").trim();
       if (priority) {
-        // Insert priority tag after marker prefix if present
-        body = body.replace(/^(TODO|DOING|DONE|NOW|LATER|WAITING)\s+/i, `$1 [#${priority}] `);
-        if (!body.includes("[#")) {
-          body = `[#${priority}] ${body}`;
-        }
+        body = body.replace(/^(TODO|DOING|DONE|NOW|LATER|WAITING)\s+/, `$1 [#${priority}] `);
+        if (!body.includes("[#")) body = `[#${priority}] ${body}`;
       }
       console.log("[time-log] changePriority new content:", body);
       await logseq.Editor.updateBlock(targetUuid, body);
