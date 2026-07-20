@@ -4,6 +4,8 @@ import type { TimeLogEntry } from "../types";
 interface TimeBlockProps {
   entry: TimeLogEntry;
   style: React.CSSProperties;
+  displayStart?: number;
+  displayEnd?: number;
   isSelected: boolean;
   onSelect: (uuid: string) => void;
   onDoubleClick: (uuid: string) => void;
@@ -14,7 +16,7 @@ function formatHM(minutes: number): string {
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
 
-export default function TimeBlock({ entry, style, isSelected, onSelect, onDoubleClick, onDelete }: TimeBlockProps) {
+export default function TimeBlock({ entry, style, displayStart, displayEnd, isSelected, onSelect, onDoubleClick, onDelete }: TimeBlockProps) {
   const actualHeight = parseFloat(String(style.height)) || 0;
 
   const {
@@ -105,7 +107,7 @@ export default function TimeBlock({ entry, style, isSelected, onSelect, onDouble
         {actualHeight >= 15 && (
           <>
             <span className="time-block-time">
-              {formatHM(entry.startMinutes)} - {formatHM(entry.endMinutes)}
+              {formatHM(displayStart ?? entry.startMinutes)} - {formatHM(displayEnd ?? entry.endMinutes)}
             </span>
             <span className="time-block-activity">{entry.activity}</span>
             {entry.isClockEntry && (
