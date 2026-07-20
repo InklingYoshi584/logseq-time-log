@@ -132,7 +132,7 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, [currentYear, loadYear, selectedDay]);
+  }, [currentYear, loadYear]);
 
   useEffect(() => {
     // eslint-disable-next-line -- initial load
@@ -209,10 +209,16 @@ export default function App() {
     try {
       await logseq.Editor.moveBlock(activeUuid, overUuid, { before: false });
       console.log("[time-log] moveBlock done");
-      if (selectedDay !== null) {
-        const todos = await queryDayTodos(selectedDay);
-        setDayTodos(todos);
-      }
+      // Swap locally to avoid losing manual order from re-query sort
+      setDayTodos((prev) => {
+        const idx1 = prev.findIndex((t) => t.uuid === activeUuid);
+        const idx2 = prev.findIndex((t) => t.uuid === overUuid);
+        if (idx1 === -1 || idx2 === -1) return prev;
+        const next = [...prev];
+        const [item] = next.splice(idx1, 1);
+        next.splice(idx2, 0, item);
+        return next;
+      });
     } catch (err) {
       console.error("Failed to reorder:", err);
     }
