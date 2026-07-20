@@ -433,10 +433,12 @@ function DraggableTodoCard({ todo, onChangeMarker, depth = 0 }: {
     <div ref={setNodeRef} style={style}>
       <div
         className={`todo-card marker-${todo.marker.toLowerCase()}`}
-        style={{ paddingLeft: `${12 + Math.min(depth, 8) * 20}px` }}
+        style={{ paddingLeft: `${12 + Math.min(depth, 8) * 20}px`, cursor: "grab" }}
         data-depth={Math.min(depth, 8)}
+        {...attributes}
+        {...listeners}
       >
-        <span className="todo-drag-handle" {...attributes} {...listeners}>⋮⋮</span>
+        <span className="todo-drag-handle">⋮⋮</span>
         <button
           type="button"
           className={`todo-checkbox${todo.marker === "DONE" ? " checked" : ""}`}
