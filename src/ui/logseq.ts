@@ -171,16 +171,24 @@ async function queryAndResolveRefs(journalDay: number): Promise<TodoBlock[]> {
     while ((match = uuidRe.exec(block.content)) !== null) {
       try {
         const refBlock = await logseq.Editor.getBlock(match[1]);
-        if (refBlock?.marker && typeof refBlock.marker === "string" && refBlock.marker in VALID_MARKERS) {
-          todos.push({
-            ...block,
-            content: refBlock.content ?? block.content,
-            marker: refBlock.marker as TodoBlock["marker"],
-            priority: validatePriority(refBlock.priority),
-          });
-          break;
+        if (!refBlock) {
+          console.warn("[time-log] getBlock returned null for ref:", match[1]);
+          continue;
         }
-      } catch { /* unresolvable ref — skip */ }
+        if (!refBlock.marker || typeof refBlock.marker !== "string" || !(refBlock.marker in VALID_MARKERS)) {
+          console.warn("[time-log] ref block has no valid marker:", match[1], refBlock.marker);
+          continue;
+        }
+        todos.push({
+          ...block,
+          content: refBlock.content ?? block.content,
+          marker: refBlock.marker as TodoBlock["marker"],
+          priority: validatePriority(refBlock.priority),
+        });
+        break;
+      } catch (err) {
+        console.warn("[time-log] getBlock threw for ref:", match[1], err);
+      }
     }
   }
 
