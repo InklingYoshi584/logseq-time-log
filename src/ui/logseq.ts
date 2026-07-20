@@ -239,31 +239,39 @@ export function groupDayTodosByPriority(todos: TodoBlock[]): Array<[string, Todo
 
 export async function moveTodoToJournal(blockUuid: string, content: string): Promise<number> {
   let journalDay: number;
+  let pageName: string;
   try {
     const stateToday = await logseq.App.getStateFromStore("today") as unknown;
     console.log("[time-log] raw state today:", stateToday, typeof stateToday);
     if (typeof stateToday === "string") {
-      // State returns formatted string like "Jul 20th, 2026"
+      // Use the state string as the page name directly (respects user's date format)
+      pageName = stateToday;
       const parsed = new Date(stateToday);
       if (!isNaN(parsed.getTime())) {
         journalDay = parsed.getFullYear() * 10000 + (parsed.getMonth() + 1) * 100 + parsed.getDate();
       } else {
-        throw new Error("could not parse state date string");
+        // Can't parse — fall back to JS Date for journalDay, keep state string as pageName
+        const d = new Date();
+        journalDay = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
       }
     } else if (typeof stateToday === "number" && stateToday > 20000101) {
       journalDay = stateToday;
+      const yyyy = Math.floor(journalDay / 10000);
+      const mm = String(Math.floor((journalDay % 10000) / 100)).padStart(2, "0");
+      const dd = String(journalDay % 100).padStart(2, "0");
+      pageName = `${yyyy}${mm}${dd}`;
     } else {
       throw new Error("no valid today in state");
     }
   } catch {
     const d = new Date();
     journalDay = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+    const yyyy = Math.floor(journalDay / 10000);
+    const mm = String(Math.floor((journalDay % 10000) / 100)).padStart(2, "0");
+    const dd = String(journalDay % 100).padStart(2, "0");
+    pageName = `${yyyy}${mm}${dd}`;
   }
   console.log("[time-log] resolved journalDay:", journalDay);
-  const yyyy = Math.floor(journalDay / 10000);
-  const mm = String(Math.floor((journalDay % 10000) / 100)).padStart(2, "0");
-  const dd = String(journalDay % 100).padStart(2, "0");
-  const pageName = `${yyyy}${mm}${dd}`;
 
   console.log("[time-log] moveTodoToJournal:", { blockUuid, journalDay, pageName });
 
