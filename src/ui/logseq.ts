@@ -74,6 +74,7 @@ export async function queryJournalDaysWithTodos(year: number): Promise<Set<numbe
   const yStart = year * 10000 + 101;
   const yEnd = year * 10000 + 1231;
 
+  // Days with regular TODO blocks
   const query = `
     [:find ?day
      :where
@@ -86,9 +87,28 @@ export async function queryJournalDaysWithTodos(year: number): Promise<Set<numbe
 
   const raw = await runQuery(query) as number[] | null;
   if (!raw) return new Set<number>();
-  // Defensive: the result may be nested [day, day, ...] or [[day], [day], ...]
   const flat = raw.flat(2) as number[];
-  return new Set(flat.filter((d) => typeof d === "number"));
+  const days = new Set(flat.filter((d) => typeof d === "number"));
+
+  // Also include days with reference blocks
+  const refQuery = `
+    [:find ?day
+     :where
+     [?b :block/content ?content]
+     [(clojure.string/includes? ?content "((")]
+     [?b :block/page ?p]
+     [?p :block/journal-day ?day]
+     [(>= ?day ${yStart})]
+     [(<= ?day ${yEnd})]]
+  `;
+  const refRaw = await runQuery(refQuery) as number[] | null;
+  if (refRaw) {
+    for (const d of refRaw.flat(2)) {
+      if (typeof d === "number") days.add(d);
+    }
+  }
+
+  return days;
 }
 
 /**
@@ -110,8 +130,60 @@ export async function queryDayTodos(journalDay: number): Promise<TodoBlock[]> {
   `;
 
   const results = await runQuery(query) as Array<Array<unknown>> | null;
-  if (!results || results.length === 0) return [];
-  return results.flat().map(normalizeTodo);
+  const todos = results ? results.flat().map(normalizeTodo) : [];
+
+  // Also find and resolve reference blocks on this day
+  const refTodos = await queryAndResolveRefs(journalDay);
+
+  // Deduplicate by uuid
+  const seen = new Set(todos.map((t) => t.uuid));
+  for (const rt of refTodos) {
+    if (!seen.has(rt.uuid)) todos.push(rt);
+  }
+
+  return todos;
+}
+
+async function queryAndResolveRefs(journalDay: number): Promise<TodoBlock[]> {
+  const refQuery = `
+    [:find (pull ?b [
+      :block/uuid
+      :block/content
+      :block/priority
+      {:block/page [:block/name :block/journal-day]}
+    ])
+     :where
+     [?b :block/content ?content]
+     [(clojure.string/includes? ?content "((")]
+     [?b :block/page ?p]
+     [?p :block/journal-day ${journalDay}]]
+  `;
+
+  const refResults = await runQuery(refQuery) as Array<Array<unknown>> | null;
+  if (!refResults || refResults.length === 0) return [];
+
+  const todos: TodoBlock[] = [];
+  const uuidRe = /\(\(([a-f0-9-]+)\)\)/g;
+
+  for (const raw of refResults.flat()) {
+    const block = normalizeTodo(raw);
+    let match: RegExpExecArray | null;
+    while ((match = uuidRe.exec(block.content)) !== null) {
+      try {
+        const refBlock = await logseq.Editor.getBlock(match[1]);
+        if (refBlock?.marker && typeof refBlock.marker === "string" && refBlock.marker in VALID_MARKERS) {
+          todos.push({
+            ...block,
+            marker: refBlock.marker as TodoBlock["marker"],
+            priority: validatePriority(refBlock.priority),
+          });
+          break;
+        }
+      } catch { /* unresolvable ref — skip */ }
+    }
+  }
+
+  return todos;
 }
 
 async function runQuery(query: string): Promise<unknown[] | null> {
