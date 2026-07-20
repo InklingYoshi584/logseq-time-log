@@ -264,12 +264,21 @@ export default function App() {
     >
       <DayDetail
         journalDay={selectedDay}
+        pageName={
+          `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`
+        }
         todos={dayTodos}
         loading={dayLoading}
         onBack={handleBackToCalendar}
         onDelete={handleJournalDelete}
         onChangeMarker={handleChangeMarker}
         onAddTodo={handleAddTodo}
+        onRefresh={async () => {
+          if (selectedDay !== null) {
+            const todos = await queryDayTodos(selectedDay);
+            setDayTodos(todos);
+          }
+        }}
       />
     </div>
   ) : (

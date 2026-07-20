@@ -163,7 +163,109 @@ export async function queryDayTodos(journalDay: number): Promise<TodoBlock[]> {
  // Auto-nest reference blocks based on original parent-child hierarchy
  await autoNestReferences(journalDay);
 
- return buildBlockTree(todos);
+ const tree = buildBlockTree(todos);
+
+ // Resolve page name for # Todo filtering
+ const pageQuery = `
+    [:find (pull ?p [:block/name]) .
+     :where
+     [?p :block/journal-day ${journalDay}]]
+ `;
+ const pageResult = await runQuery(pageQuery) as { name: string } | null;
+ const pageName = pageResult?.name ?? null;
+
+ // Filter: only show TODOs that are descendants of the # Todo block
+ const filtered = filterUnderTodo(pageName, tree);
+ return filtered;
+}
+
+/** Find TODOs on a journal page that are NOT under the # Todo block. */
+export async function findOrphanTodos(pageName: string): Promise<TodoBlock[]> {
+ const blocks = await logseq.Editor.getPageBlocksTree(pageName);
+ if (!blocks || blocks.length === 0) return [];
+
+ // Find the # Todo block
+ let todosBlockChildren: Array<Record<string, unknown>> | undefined;
+ const orphans: TodoBlock[] = [];
+
+ function walk(children: Array<Record<string, unknown>> | undefined, underTodo: boolean) {
+  if (!children) return;
+  for (const child of children) {
+   const marker = child.marker as string | undefined;
+   const content = String(child.content ?? "");
+
+   if (content.includes("# Todo") && !marker) {
+    // Found the # Todo block — track its children
+    todosBlockChildren = child.children as Array<Record<string, unknown>> | undefined;
+    walk(child.children as Array<Record<string, unknown>> | undefined, true);
+    continue;
+   }
+
+   if (marker && typeof marker === "string" && marker in VALID_MARKERS) {
+    if (!underTodo) {
+     orphans.push({
+      uuid: String(child.uuid ?? ""),
+      content: cleanContent(String(child.content ?? "")),
+      marker: marker as TodoBlock["marker"],
+      priority: validatePriority(child.priority),
+      page: { name: pageName, journalDay: null, journal: false },
+     });
+    }
+   }
+
+   walk(child.children as Array<Record<string, unknown>> | undefined, underTodo);
+  }
+ }
+
+ walk(blocks as Array<Record<string, unknown>>, false);
+ return orphans;
+}
+
+/** Move a block to be a child of the # Todo block on a page. */
+export async function sweepToTodo(pageName: string, blockUuid: string): Promise<void> {
+ const todosUuid = await findOrCreateTodosBlock(pageName);
+ await logseq.Editor.moveBlock(blockUuid, todosUuid, { children: true });
+}
+
+async function filterUnderTodo(pageName: string | null, tree: TodoBlock[]): Promise<TodoBlock[]> {
+ if (!pageName) return tree;
+ try {
+  const blocks = await logseq.Editor.getPageBlocksTree(pageName);
+  if (!blocks || blocks.length === 0) return tree;
+
+  // Collect all UUIDs that are descendants of # Todo
+  const underTodo = new Set<string>();
+  function collect(children: Array<Record<string, unknown>> | undefined, collecting: boolean) {
+   if (!children) return;
+   for (const child of children) {
+    const content = String(child.content ?? "");
+    const marker = child.marker as string | undefined;
+    if (content.includes("# Todo") && !marker) {
+     collect(child.children as Array<Record<string, unknown>> | undefined, true);
+     continue;
+    }
+    if (collecting && child.uuid) {
+     underTodo.add(String(child.uuid));
+    }
+    collect(child.children as Array<Record<string, unknown>> | undefined, collecting);
+   }
+  }
+  collect(blocks as Array<Record<string, unknown>>, false);
+
+  // Filter tree to only include nodes under # Todo
+  function filterTree(nodes: TodoBlock[]): TodoBlock[] {
+   return nodes
+    .filter((n) => underTodo.has(n.uuid))
+    .map((n) => ({
+     ...n,
+     children: n.children ? filterTree(n.children) : undefined,
+    }));
+  }
+
+  return filterTree(tree);
+ } catch {
+  return tree; // fallback: show everything
+ }
 }
 
 async function queryAndResolveRefs(journalDay: number): Promise<TodoBlock[]> {

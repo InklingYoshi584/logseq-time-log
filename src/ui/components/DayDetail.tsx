@@ -1,15 +1,18 @@
 import type { TodoBlock } from "../types";
-import { sortDayTodos, groupDayTodosByPriority } from "../logseq";
+import { useState, useEffect } from "react";
+import { sortDayTodos, groupDayTodosByPriority, findOrphanTodos, sweepToTodo } from "../logseq";
 import AddTodoBar from "./AddTodoBar";
 
 interface DayDetailProps {
   journalDay: number;
+  pageName: string;
   todos: TodoBlock[];
   loading: boolean;
   onBack: () => void;
   onDelete: (blockUuid: string) => void;
   onChangeMarker: (blockUuid: string, marker: TodoBlock["marker"]) => void;
   onAddTodo: (text: string, priority: string) => void;
+  onRefresh: () => void;
 }
 
 const MARKER_BADGE: Record<string, string> = {
@@ -21,7 +24,21 @@ const MARKER_BADGE: Record<string, string> = {
   WAITING: "WAITING",
 };
 
-export default function DayDetail({ journalDay, todos, loading, onBack, onDelete, onChangeMarker, onAddTodo }: DayDetailProps) {
+export default function DayDetail({ journalDay, pageName, todos, loading, onBack, onDelete, onChangeMarker, onAddTodo, onRefresh }: DayDetailProps) {
+  const [sweepOpen, setSweepOpen] = useState(false);
+  const [orphans, setOrphans] = useState<TodoBlock[]>([]);
+
+  const handleOpenSweep = async () => {
+    const result = await findOrphanTodos(pageName);
+    setOrphans(result);
+    setSweepOpen(true);
+  };
+
+  const handleSweep = async (uuid: string) => {
+    await sweepToTodo(pageName, uuid);
+    setOrphans((prev) => prev.filter((o) => o.uuid !== uuid));
+    onRefresh();
+  };
   if (loading) {
     return (
       <div className="day-detail">
@@ -45,6 +62,35 @@ export default function DayDetail({ journalDay, todos, loading, onBack, onDelete
       </div>
 
       <AddTodoBar onAdd={onAddTodo} />
+
+      <div className="sweep-bar">
+        <button type="button" className="sweep-btn" onClick={handleOpenSweep}>
+          🧹 Sweep
+        </button>
+        {sweepOpen && (
+          <div className="sweep-popup">
+            <div className="sweep-popup-header">
+              <span>Orphan TODOs</span>
+              <button type="button" className="sweep-close" onClick={() => setSweepOpen(false)}>✕</button>
+            </div>
+            {orphans.length === 0 ? (
+              <p className="sweep-empty">No orphan TODOs found.</p>
+            ) : (
+              orphans.map((o) => (
+                <button
+                  key={o.uuid}
+                  type="button"
+                  className="sweep-item"
+                  onClick={() => handleSweep(o.uuid)}
+                >
+                  <span className={`todo-marker marker-${o.marker.toLowerCase()}`}>{o.marker}</span>
+                  <span>{o.content}</span>
+                </button>
+              ))
+            )}
+          </div>
+        )}
+      </div>
 
       {grouped.length === 0 ? (
         <p className="todo-empty">No tasks for this day.</p>
