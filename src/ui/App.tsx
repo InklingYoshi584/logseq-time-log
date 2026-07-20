@@ -137,9 +137,9 @@ export default function App() {
 
   /* ── Drag to journal ── */
   const handleDropOnJournal = useCallback(
-    async (blockUuid: string, content: string) => {
+    async (blockUuid: string) => {
       try {
-        const journalDay = await moveTodoToJournal(blockUuid, content, selectedDay ?? undefined);
+        const journalDay = await moveTodoToJournal(blockUuid, selectedDay ?? undefined);
         // Immediately add the day to calendar data so it highlights
         setDaysByYear((prev) => {
           const next = new Map(prev);
@@ -193,10 +193,10 @@ export default function App() {
         e.preventDefault();
         try {
           const data = JSON.parse(e.dataTransfer.getData("text/plain"));
-          if (data.uuid) handleDropOnJournal(data.uuid, data.content ?? "");
+          if (data.uuid) handleDropOnJournal(data.uuid);
         } catch {
           const uuid = e.dataTransfer.getData("text/plain");
-          if (uuid) handleDropOnJournal(uuid, "");
+          if (uuid) handleDropOnJournal(uuid);
         }
       }}
     >
@@ -216,10 +216,10 @@ export default function App() {
         e.preventDefault();
         try {
           const data = JSON.parse(e.dataTransfer.getData("text/plain"));
-          if (data.uuid) handleDropOnJournal(data.uuid, data.content ?? "");
+          if (data.uuid) handleDropOnJournal(data.uuid);
         } catch {
           const uuid = e.dataTransfer.getData("text/plain");
-          if (uuid) handleDropOnJournal(uuid, "");
+          if (uuid) handleDropOnJournal(uuid);
         }
       }}
     >

@@ -237,7 +237,7 @@ export function groupDayTodosByPriority(todos: TodoBlock[]): Array<[string, Todo
 
 /* ── Move to journal ── */
 
-export async function moveTodoToJournal(blockUuid: string, content: string, targetDay?: number): Promise<number> {
+export async function moveTodoToJournal(blockUuid: string, targetDay?: number): Promise<number> {
   let journalDay: number;
   let pageName: string;
   try {
@@ -286,15 +286,6 @@ export async function moveTodoToJournal(blockUuid: string, content: string, targ
     sibling: false,
   });
   console.log("[time-log] insertBlock result:", result);
-
-  // Ensure the inserted block has a TODO marker so queries detect it
-  if (result?.uuid) {
-    try {
-      await logseq.Editor.upsertBlockProperty(result.uuid, "marker", "TODO");
-    } catch (err) {
-      console.warn("[time-log] failed to set TODO marker:", err);
-    }
-  }
 
   try {
     await logseq.Editor.setBlockCollapsed(todosBlockUuid, { flag: false });
