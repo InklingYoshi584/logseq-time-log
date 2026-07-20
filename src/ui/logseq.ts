@@ -614,19 +614,20 @@ export async function queryPageTodosGroupedByTitle(pageName: string): Promise<Ar
  const groups = new Map<string, TodoBlock[]>();
  const KEY_UNCATEGORIZED = "__uncategorized__";
 
- function walk(children: Array<Record<string, unknown>> | undefined, title: string | null) {
+ function walk(children: Array<Record<string, unknown>> | undefined, title: string | null, parentUuid?: string) {
   if (!children) return;
   for (const child of children) {
    const marker = child.marker as string | undefined;
-   // If this block is a TODO, add it under the current title
    if (marker && typeof marker === "string" && marker in VALID_MARKERS) {
     const key = title ?? KEY_UNCATEGORIZED;
     const group = groups.get(key);
+    const uuid = String(child.uuid ?? "");
     const todo: TodoBlock = {
-     uuid: String(child.uuid ?? ""),
+     uuid,
      content: cleanContent(String(child.content ?? "")),
      marker: marker as TodoBlock["marker"],
      priority: validatePriority(child.priority),
+     parentUuid,
      page: { name: pageName, journalDay: null, journal: false },
     };
     if (group) {
@@ -634,10 +635,8 @@ export async function queryPageTodosGroupedByTitle(pageName: string): Promise<Ar
     } else {
      groups.set(key, [todo]);
     }
-    // Continue walking children — the title stays the same for nested TODOs
-    walk(child.children as Array<Record<string, unknown>> | undefined, title);
+    walk(child.children as Array<Record<string, unknown>> | undefined, title, uuid);
    } else {
-    // Not a TODO — this becomes the new title for its children
     const newTitle = cleanContent(String(child.content ?? ""));
     walk(child.children as Array<Record<string, unknown>> | undefined, newTitle);
    }

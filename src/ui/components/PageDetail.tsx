@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { TodoBlock } from "../types";
-import { queryPageTodosGroupedByTitle } from "../logseq";
+import { queryPageTodosGroupedByTitle, buildBlockTree } from "../logseq";
 import { deleteTodoWithRefs } from "../logseq";
 import TodoCard from "./TodoCard";
 
@@ -57,7 +57,7 @@ export default function PageDetail({ pageName, onBack, onChangeMarker }: PageDet
             <section key={title || "__uncat__"} className="day-priority-section">
               <h3 className="day-priority-heading">{title || "Uncategorized"}</h3>
               <div className="day-todo-list">
-                {todos.map((todo) => (
+                {buildBlockTree(todos).map((todo) => (
                   <TodoCard key={todo.uuid} todo={todo} draggable onDelete={handleDelete} onChangeMarker={onChangeMarker} />
                 ))}
               </div>
