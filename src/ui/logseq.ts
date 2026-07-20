@@ -514,6 +514,18 @@ async function findOrCreateTodosBlock(pageName: string): Promise<string> {
 
 /** Update a block's TODO marker. */
 export async function changeMarker(blockUuid: string, marker: string): Promise<void> {
+ // If this is a reference block, update the ORIGINAL block's marker instead
+ const block = await logseq.Editor.getBlock(blockUuid);
+ const content = block?.content;
+ if (content && typeof content === "string") {
+  const match = content.match(/\(\(([a-f0-9-]+)\)\)/);
+  if (match) {
+   // This is a reference block — update the original
+   await logseq.Editor.upsertBlockProperty(match[1], "marker", marker);
+   return;
+  }
+ }
+ // Not a reference — update directly
  await logseq.Editor.upsertBlockProperty(blockUuid, "marker", marker);
 }
 
