@@ -1,13 +1,13 @@
-/* ── Theme (dark by default, light via .light class) ── */
+/* ── Theme (light by default, dark via .dark class) ── */
 :root {
-  --bg-primary: #1b2430;
-  --bg-surface: #232e3b;
-  --bg-elevated: #2a3543;
-  --bg-hover: #313d4e;
-  --border: #364153;
-  --text-primary: #d1d5db;
-  --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
+  --bg-primary: #ffffff;
+  --bg-surface: #f3f4f6;
+  --bg-elevated: #e5e7eb;
+  --bg-hover: #d1d5db;
+  --border: #d1d5db;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #9ca3af;
   --accent: #60a5fa;
   --danger: #f87171;
   --success: #34d399;
@@ -23,16 +23,16 @@
   --font-mono: "SF Mono", "Fira Code", "Cascadia Code", monospace;
 }
 
-body.light,
-.light {
-  --bg-primary: #ffffff;
-  --bg-surface: #f3f4f6;
-  --bg-elevated: #e5e7eb;
-  --bg-hover: #d1d5db;
-  --border: #d1d5db;
-  --text-primary: #111827;
-  --text-secondary: #4b5563;
-  --text-muted: #9ca3af;
+body.dark,
+.dark {
+  --bg-primary: #1b2430;
+  --bg-surface: #232e3b;
+  --bg-elevated: #2a3543;
+  --bg-hover: #313d4e;
+  --border: #364153;
+  --text-primary: #d1d5db;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
 }
 
 /* ── Reset ── */
