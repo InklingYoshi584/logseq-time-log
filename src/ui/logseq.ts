@@ -95,21 +95,16 @@ export async function queryJournalDaysWithTodos(year: number): Promise<Set<numbe
  console.log("[time-log] marker days set:", [...days]);
 
  // Also include days with reference blocks
- const refQuery = `
-    [:find ?day
-     :where
-     [?b :block/content ?content]
-     [(clojure.string/includes? ?content "# Todo")]
-     [?b :block/page ?p]
-     [?p :block/journal-day ?day]
-     [(>= ?day ${yStart})]
-     [(<= ?day ${yEnd})]]
-  `;
- const refRaw = await runQuery(refQuery) as number[] | null;
- console.log("[time-log] ref days raw:", refRaw);
- if (refRaw) {
-  for (const d of refRaw.flat(2)) {
-   if (typeof d === "number") days.add(d);
+ const extraQueries = [
+  `[:find ?day :where [?b :block/content ?content] [(clojure.string/includes? ?content "# Todo")] [?b :block/page ?p] [?p :block/journal-day ?day] [(>= ?day ${yStart})] [(<= ?day ${yEnd})]]`,
+  `[:find ?day :where [?b :block/content ?content] [(clojure.string/includes? ?content "((")] [?b :block/page ?p] [?p :block/journal-day ?day] [(>= ?day ${yStart})] [(<= ?day ${yEnd})]]`,
+ ];
+ for (const q of extraQueries) {
+  const raw = await runQuery(q) as number[] | null;
+  if (raw) {
+   for (const d of raw.flat(2)) {
+    if (typeof d === "number") days.add(d);
+   }
   }
  }
  console.log("[time-log] merged days:", [...days]);
