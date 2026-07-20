@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import type { TodoBlock } from "./types";
+import type { TodoBlock, TodoPriority } from "./types";
 import {
   queryAllTodos,
   queryJournalDaysWithTodos,
@@ -203,6 +203,37 @@ export default function App() {
     }
   }, [selectedDay]);
 
+  const handleReorder = useCallback(async (activeUuid: string, overUuid: string) => {
+    try {
+      await logseq.Editor.moveBlock(activeUuid, overUuid, { before: false });
+      if (selectedDay !== null) {
+        const todos = await queryDayTodos(selectedDay);
+        setDayTodos(todos);
+      }
+    } catch (err) {
+      console.error("Failed to reorder:", err);
+    }
+  }, [selectedDay]);
+
+  const handleChangePriority = useCallback(async (blockUuid: string, priority: TodoPriority | null) => {
+    try {
+      const block = await logseq.Editor.getBlock(blockUuid);
+      if (!block?.content) return;
+      // Replace or remove [#A] prefix
+      let newContent = block.content.replace(/^\[#(A|B|C)\]\s*/, "");
+      if (priority) {
+        newContent = `[#${priority}] ${newContent}`;
+      }
+      await logseq.Editor.updateBlock(blockUuid, newContent);
+      if (selectedDay !== null) {
+        const todos = await queryDayTodos(selectedDay);
+        setDayTodos(todos);
+      }
+    } catch (err) {
+      console.error("Failed to change priority:", err);
+    }
+  }, [selectedDay]);
+
   const handleAddTodo = useCallback(async (text: string, priority: string) => {
     if (selectedDay === null) return;
     try {
@@ -279,6 +310,8 @@ export default function App() {
             setDayTodos(todos);
           }
         }}
+        onReorder={handleReorder}
+        onChangePriority={handleChangePriority}
       />
     </div>
   ) : (

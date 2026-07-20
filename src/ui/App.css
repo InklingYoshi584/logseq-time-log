@@ -808,3 +808,29 @@ html, body, #root {
 .sweep-item:last-child {
   border-bottom: none;
 }
+.todo-card--overlay {
+  opacity: 0.9;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  border: 2px dashed var(--ls-accent, var(--accent));
+}
+
+.day-priority-section.drop-target-active {
+  outline: 2px dashed var(--ls-accent, var(--accent));
+  outline-offset: -2px;
+  border-radius: var(--radius);
+}
+
+.drop-zone-empty {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+.drop-zone-placeholder {
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 8px;
+}
