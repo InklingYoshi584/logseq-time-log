@@ -201,6 +201,25 @@ export default function App() {
     }
   }, [selectedDay]);
 
+  const handleAddTodo = useCallback(async (text: string, priority: string) => {
+    if (selectedDay === null) return;
+    try {
+      const yyyy = Math.floor(selectedDay / 10000);
+      const mm = String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0");
+      const dd = String(selectedDay % 100).padStart(2, "0");
+      const pageName = `${yyyy}${mm}${dd}`;
+      const prefix = priority ? `[#${priority}] ` : "";
+      await logseq.Editor.insertBlock(pageName, `${prefix}TODO ${text}`, {
+        isPageBlock: true,
+        sibling: true,
+      });
+      const todos = await queryDayTodos(selectedDay);
+      setDayTodos(todos);
+    } catch (err) {
+      console.error("Failed to add TODO:", err);
+    }
+  }, [selectedDay]);
+
   const handlePageDelete = useCallback(async (blockUuid: string) => {
     try {
       await deleteTodoWithRefs(blockUuid);
@@ -250,6 +269,7 @@ export default function App() {
         onBack={handleBackToCalendar}
         onDelete={handleJournalDelete}
         onChangeMarker={handleChangeMarker}
+        onAddTodo={handleAddTodo}
       />
     </div>
   ) : (

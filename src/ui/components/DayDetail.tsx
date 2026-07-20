@@ -1,5 +1,6 @@
 import type { TodoBlock } from "../types";
 import { sortDayTodos, groupDayTodosByPriority } from "../logseq";
+import AddTodoBar from "./AddTodoBar";
 
 interface DayDetailProps {
   journalDay: number;
@@ -8,6 +9,7 @@ interface DayDetailProps {
   onBack: () => void;
   onDelete: (blockUuid: string) => void;
   onChangeMarker: (blockUuid: string, marker: TodoBlock["marker"]) => void;
+  onAddTodo: (text: string, priority: string) => void;
 }
 
 const MARKER_BADGE: Record<string, string> = {
@@ -19,7 +21,7 @@ const MARKER_BADGE: Record<string, string> = {
   WAITING: "WAITING",
 };
 
-export default function DayDetail({ journalDay, todos, loading, onBack, onDelete, onChangeMarker }: DayDetailProps) {
+export default function DayDetail({ journalDay, todos, loading, onBack, onDelete, onChangeMarker, onAddTodo }: DayDetailProps) {
   if (loading) {
     return (
       <div className="day-detail">
@@ -41,6 +43,8 @@ export default function DayDetail({ journalDay, todos, loading, onBack, onDelete
         <button type="button" className="day-detail-back" onClick={onBack}>← Back</button>
         <h2 className="day-detail-date">{formatDay(journalDay)}</h2>
       </div>
+
+      <AddTodoBar onAdd={onAddTodo} />
 
       {grouped.length === 0 ? (
         <p className="todo-empty">No tasks for this day.</p>
