@@ -63,7 +63,9 @@ export default function PageTodos({ todos, loading, error, onDelete, onSelectPag
       <div className="todo-list page-list">
         {filtered.length === 0 ? (
           <p className="todo-empty">
-            {searchQuery.trim() ? "No matching TODOs." : "No TODOs in regular pages."}
+            {searchQuery.trim()
+              ? searchMode === "pages" ? "No matching pages." : "No matching TODOs."
+              : "No TODOs in regular pages."}
           </p>
         ) : searchQuery.trim() ? (
           // Search mode: flat list with page name separators
