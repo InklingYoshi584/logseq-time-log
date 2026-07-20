@@ -259,9 +259,9 @@ function PrioritySection({
   onDelete: (uuid: string) => void;
   onChangeMarker: (uuid: string, marker: TodoBlock["marker"]) => void;
 }) {
-  if (isEmpty && !isDragging) return null;
-
   const { setNodeRef: setDroppableRef, isOver: isDroppableOver } = useDroppable({ id: priorityKey });
+
+  if (isEmpty && !isDragging) return null;
 
   return (
     <section
