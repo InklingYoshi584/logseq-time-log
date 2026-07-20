@@ -1,4 +1,4 @@
-import type { TodoBlock, TodoMarker, TodoPriority } from "./types";
+import type { TodoBlock, TodoPriority } from "./types";
 
 /* ── Marker & priority ordering ── */
 
@@ -185,7 +185,6 @@ export async function findOrphanTodos(pageName: string): Promise<TodoBlock[]> {
  if (!blocks || blocks.length === 0) return [];
 
  // Find the # Todo block
- let todosBlockChildren: Array<Record<string, unknown>> | undefined;
  const orphans: TodoBlock[] = [];
 
  function walk(children: Array<Record<string, unknown>> | undefined, underTodo: boolean) {
@@ -195,8 +194,6 @@ export async function findOrphanTodos(pageName: string): Promise<TodoBlock[]> {
    const content = String(child.content ?? "");
 
    if (content.includes("# Todo") && !marker) {
-    // Found the # Todo block — track its children
-    todosBlockChildren = child.children as Array<Record<string, unknown>> | undefined;
     walk(child.children as Array<Record<string, unknown>> | undefined, true);
     continue;
    }
@@ -627,7 +624,7 @@ export async function moveTodoToJournal(blockUuid: string, targetDay?: number): 
 
  try {
   await logseq.Editor.setBlockCollapsed(todosBlockUuid, { flag: false });
- } catch { }
+ } catch { /* ignore */ }
 
  return effectiveDay;
 }
@@ -717,7 +714,7 @@ export async function deleteTodoWithRefs(blockUuid: string): Promise<void> {
  if (refs) {
   for (const [block] of refs) {
    if (block?.uuid) {
-    try { await logseq.Editor.removeBlock(block.uuid); } catch { }
+    try { await logseq.Editor.removeBlock(block.uuid); } catch { /* ignore */ }
    }
   }
  }

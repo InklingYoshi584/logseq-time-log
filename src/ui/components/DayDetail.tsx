@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -15,7 +15,6 @@ import {
   SortableContext,
   verticalListSortingStrategy,
   useSortable,
-  arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { TodoBlock, TodoPriority } from "../types";
@@ -59,17 +58,11 @@ export default function DayDetail({
   journalDay, pageName, todos, loading, onBack, onDelete,
   onChangeMarker, onAddTodo, onRefresh, onReorder, onChangePriority,
 }: DayDetailProps) {
-  const [sweepOpen, setSweepOpen] = useState(false);
-  const [orphans, setOrphans] = useState<TodoBlock[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [overPriority, setOverPriority] = useState<string | null>(null);
-
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const sorted = useMemo(() => sortDayTodos(todos), [todos]);
   const grouped = useMemo(() => groupDayTodosByPriority(sorted), [sorted]);
 
-  // Build section map: priorityKey → TodoBlock[]
   const sections = useMemo(() => {
     const map = new Map<string, TodoBlock[]>();
     for (const [key, items] of grouped) {
@@ -77,6 +70,21 @@ export default function DayDetail({
     }
     return map;
   }, [grouped]);
+
+  const orderedKeys = useMemo(() => {
+    return [...ALL_PRIORITY_KEYS].sort((a, b) => {
+      const aEmpty = (sections.get(a)?.length ?? 0) === 0;
+      const bEmpty = (sections.get(b)?.length ?? 0) === 0;
+      if (aEmpty && !bEmpty) return 1;
+      if (!aEmpty && bEmpty) return -1;
+      return ALL_PRIORITY_KEYS.indexOf(a) - ALL_PRIORITY_KEYS.indexOf(b);
+    });
+  }, [sections]);
+
+  const [sweepOpen, setSweepOpen] = useState(false);
+  const [orphans, setOrphans] = useState<TodoBlock[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [overPriority, setOverPriority] = useState<string | null>(null);
 
   const activeTodo = useMemo(
     () => (activeId ? todos.find((t) => t.uuid === activeId) ?? null : null),
@@ -89,11 +97,9 @@ export default function DayDetail({
 
   const handleDragOver = useCallback((event: DragOverEvent) => {
     const overId = String(event.over?.id);
-    // Check if over a priority section container
     if (ALL_PRIORITY_KEYS.includes(overId as typeof ALL_PRIORITY_KEYS[number])) {
       setOverPriority(overId);
     } else {
-      // Check which section the over item belongs to
       for (const [key, items] of sections) {
         if (items.some((t) => t.uuid === overId)) {
           setOverPriority(key);
@@ -112,7 +118,7 @@ export default function DayDetail({
     const activeUuid = String(active.id);
     const overId = String(over.id);
 
-    // Check if dropping onto a priority section (empty drop zone)
+    // Dropping onto a priority section (empty drop zone)
     if (ALL_PRIORITY_KEYS.includes(overId as typeof ALL_PRIORITY_KEYS[number])) {
       const targetPriority = priorityFromKey(overId);
       const currentPriority = activeTodo?.priority ?? null;
@@ -122,15 +128,12 @@ export default function DayDetail({
       return;
     }
 
-    // Dropping on another todo item
     const activeSection = findSectionFor(sections, activeUuid);
     const overSection = findSectionFor(sections, overId);
 
     if (activeSection === overSection && activeUuid !== overId) {
-      // Same section → reorder
       onReorder(activeUuid, overId);
     } else if (activeSection !== overSection && overSection) {
-      // Different section → change priority
       const targetPriority = priorityFromKey(overSection);
       onChangePriority(activeUuid, targetPriority);
     }
@@ -159,17 +162,6 @@ export default function DayDetail({
       </div>
     );
   }
-
-  // Sort sections: visible first, empty last (prevents cursor offset during drag)
-  const orderedKeys = useMemo(() => {
-    return [...ALL_PRIORITY_KEYS].sort((a, b) => {
-      const aEmpty = (sections.get(a)?.length ?? 0) === 0;
-      const bEmpty = (sections.get(b)?.length ?? 0) === 0;
-      if (aEmpty && !bEmpty) return 1;
-      if (!aEmpty && bEmpty) return -1;
-      return ALL_PRIORITY_KEYS.indexOf(a) - ALL_PRIORITY_KEYS.indexOf(b);
-    });
-  }, [sections]);
 
   return (
     <div className="day-detail">
@@ -237,7 +229,7 @@ export default function DayDetail({
 
         <DragOverlay>
           {activeTodo ? (
-            <div className="todo-card todo-card--overlay marker-${activeTodo.marker.toLowerCase()}">
+            <div className={`todo-card todo-card--overlay marker-${activeTodo.marker.toLowerCase()}`}>
               <span className="todo-marker">{MARKER_BADGE[activeTodo.marker]}</span>
               <span className="todo-content">{activeTodo.content}</span>
             </div>
@@ -248,7 +240,7 @@ export default function DayDetail({
   );
 }
 
-/* ── Priority Section (drop target) ── */
+/* ── Priority Section ── */
 
 function PrioritySection({
   priorityKey, label, items, isEmpty, isOver, isDragging,
@@ -259,7 +251,7 @@ function PrioritySection({
   onDelete: (uuid: string) => void;
   onChangeMarker: (uuid: string, marker: TodoBlock["marker"]) => void;
 }) {
-  const { setNodeRef: setDroppableRef, isOver: isDroppableOver } = useDroppable({ id: priorityKey });
+  const { setNodeRef: setDroppableRef } = useDroppable({ id: priorityKey });
 
   if (isEmpty && !isDragging) return null;
 
@@ -306,12 +298,7 @@ function SortableTodoCard({ todo, onDelete, onChangeMarker, depth = 0 }: {
   const toggleMarker = todo.marker === "TODO" ? "DOING" : todo.marker === "DOING" ? "TODO" : null;
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-    >
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <div
         className={`todo-card marker-${todo.marker.toLowerCase()} todo-card--deletable`}
         style={{ paddingLeft: `${12 + Math.min(depth, 8) * 20}px` }}
@@ -378,3 +365,4 @@ function formatDay(day: number): string {
   const weekday = date.toLocaleDateString("en-US", { weekday: "long" });
   return `${y}-${m}-${d} ${weekday}`;
 }
+

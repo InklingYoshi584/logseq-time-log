@@ -132,9 +132,10 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, [currentYear, loadYear]);
+  }, [currentYear, loadYear, selectedDay]);
 
   useEffect(() => {
+    // eslint-disable-next-line -- initial load
     initYears();
   }, [initYears]);
 

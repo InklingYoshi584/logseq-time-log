@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { TodoBlock } from "../types";
 import { queryPageTodosGroupedByTitle, buildBlockTree } from "../logseq";
 import { deleteTodoWithRefs } from "../logseq";
@@ -14,7 +14,7 @@ export default function PageDetail({ pageName, onBack, onChangeMarker }: PageDet
   const [groups, setGroups] = useState<Array<{ title: string; todos: TodoBlock[] }>>([]);
   const [loading, setLoading] = useState(true);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const result = await queryPageTodosGroupedByTitle(pageName);
@@ -24,9 +24,10 @@ export default function PageDetail({ pageName, onBack, onChangeMarker }: PageDet
     } finally {
       setLoading(false);
     }
-  };
+  }, [pageName]);
 
-  useEffect(() => { load(); }, [pageName]);
+  // eslint-disable-next-line -- initial load
+  useEffect(() => { load(); }, [load]);
 
   const handleDelete = async (uuid: string) => {
     await deleteTodoWithRefs(uuid);
