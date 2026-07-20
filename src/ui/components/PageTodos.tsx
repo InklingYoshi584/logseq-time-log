@@ -65,7 +65,18 @@ export default function PageTodos({ todos, loading, error, onDelete, onSelectPag
           <p className="todo-empty">
             {searchQuery.trim() ? "No matching TODOs." : "No TODOs in regular pages."}
           </p>
+        ) : searchQuery.trim() ? (
+          // Search mode: flat list with page name separators
+          grouped.map(([pageName, pageTodos]) => (
+            <section key={pageName} className="todo-page-group">
+              <h3 className="todo-page-heading">{pageName}</h3>
+              {pageTodos.map((todo) => (
+                <TodoCard key={todo.uuid} todo={todo} draggable onDelete={onDelete} onChangeMarker={onChangeMarker} />
+              ))}
+            </section>
+          ))
         ) : (
+          // Browse mode: page cards
           grouped.map(([pageName, pageTodos]) => (
             <button
               key={pageName}
