@@ -74,6 +74,7 @@ export async function queryAllTodos(): Promise<TodoBlock[]> {
 export async function queryJournalDaysWithTodos(year: number): Promise<Set<number>> {
  const yStart = year * 10000 + 101;
  const yEnd = year * 10000 + 1231;
+ console.log("[time-log] queryJournalDaysWithTodos year:", year, "range:", yStart, yEnd);
 
  // Days with regular TODO blocks
  const query = `
@@ -87,9 +88,11 @@ export async function queryJournalDaysWithTodos(year: number): Promise<Set<numbe
   `;
 
  const raw = await runQuery(query) as number[] | null;
+ console.log("[time-log] marker days raw:", raw);
  if (!raw) return new Set<number>();
  const flat = raw.flat(2) as number[];
  const days = new Set(flat.filter((d) => typeof d === "number"));
+ console.log("[time-log] marker days set:", [...days]);
 
  // Also include days with reference blocks
  const refQuery = `
@@ -103,11 +106,13 @@ export async function queryJournalDaysWithTodos(year: number): Promise<Set<numbe
      [(<= ?day ${yEnd})]]
   `;
  const refRaw = await runQuery(refQuery) as number[] | null;
+ console.log("[time-log] ref days raw:", refRaw);
  if (refRaw) {
   for (const d of refRaw.flat(2)) {
    if (typeof d === "number") days.add(d);
   }
  }
+ console.log("[time-log] merged days:", [...days]);
 
  return days;
 }
