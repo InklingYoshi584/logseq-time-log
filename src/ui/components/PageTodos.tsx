@@ -67,7 +67,7 @@ export default function PageTodos({ todos, loading, error, onDelete, onSelectPag
               ? searchMode === "pages" ? "No matching pages." : "No matching TODOs."
               : "No TODOs in regular pages."}
           </p>
-        ) : searchQuery.trim() ? (
+        ) : searchQuery.trim() && searchMode !== "pages" ? (
           // Search mode: flat list with page name separators
           grouped.map(([pageName, pageTodos]) => (
             <section key={pageName} className="todo-page-group">
@@ -76,6 +76,29 @@ export default function PageTodos({ todos, loading, error, onDelete, onSelectPag
                 <TodoCard key={todo.uuid} todo={todo} draggable onDelete={onDelete} onChangeMarker={onChangeMarker} />
               ))}
             </section>
+          ))
+        ) : searchQuery.trim() && searchMode === "pages" ? (
+          // Page search: show page cards
+          grouped.map(([pageName, pageTodos]) => (
+            <button
+              key={pageName}
+              type="button"
+              className="page-card"
+              onClick={() => onSelectPage?.(pageName)}
+            >
+              <div className="page-card-header">
+                <span className="page-card-name">{pageName}</span>
+                <span className="page-card-count">{pageTodos.length} TODO{pageTodos.length !== 1 ? "s" : ""}</span>
+              </div>
+              <div className="page-card-preview">
+                {pageTodos.slice(0, 3).map((todo) => (
+                  <TodoCard key={todo.uuid} todo={todo} draggable={false} onChangeMarker={onChangeMarker} />
+                ))}
+                {pageTodos.length > 3 && (
+                  <p className="page-card-more">+{pageTodos.length - 3} more</p>
+                )}
+              </div>
+            </button>
           ))
         ) : (
           // Browse mode: page cards
