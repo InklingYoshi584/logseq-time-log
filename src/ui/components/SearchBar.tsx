@@ -7,8 +7,8 @@ interface SearchBarProps {
 }
 
 const MODES: { mode: SearchMode; icon: string; title: string }[] = [
-  { mode: "active", icon: "[]", title: "Active TODOs (excluding DONE)" },
-  { mode: "all", icon: "[v]", title: "All TODOs" },
+  { mode: "active", icon: "☐", title: "Active TODOs (excluding DONE)" },
+  { mode: "all", icon: "☑", title: "All TODOs" },
   { mode: "pages", icon: "📄", title: "Search pages" },
 ];
 
