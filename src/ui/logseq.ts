@@ -3,29 +3,29 @@ import type { TodoBlock, TodoMarker, TodoPriority } from "./types";
 /* ── Marker & priority ordering ── */
 
 const MARKER_ORDER: Record<string, number> = {
-  DOING: 0,
-  TODO: 1,
-  DONE: 2,
-  NOW: 3,
-  LATER: 4,
-  WAITING: 5,
+ DOING: 0,
+ TODO: 1,
+ DONE: 2,
+ NOW: 3,
+ LATER: 4,
+ WAITING: 5,
 };
 
 const PRIORITY_ORDER: Record<string, number> = {
-  "": 0,
-  A: 1,
-  B: 2,
-  C: 3,
+ "": 0,
+ A: 1,
+ B: 2,
+ C: 3,
 };
 
 function priorityKey(p: TodoPriority | null): string {
-  return p ?? "";
+ return p ?? "";
 }
 
 /* ── Datalog helpers ── */
 
 function markerClause(): string {
-  return `(or
+ return `(or
        [?b :block/marker "TODO"]
        [?b :block/marker "DOING"]
        [?b :block/marker "NOW"]
@@ -35,7 +35,7 @@ function markerClause(): string {
 }
 
 function noDoneMarkerClause(): string {
-  return `(or
+ return `(or
        [?b :block/marker "TODO"]
        [?b :block/marker "DOING"]
        [?b :block/marker "NOW"]
@@ -49,7 +49,7 @@ function noDoneMarkerClause(): string {
  * Query all non-DONE TODO blocks (for the Page TODOs tab).
  */
 export async function queryAllTodos(): Promise<TodoBlock[]> {
-  const query = `
+ const query = `
     [:find (pull ?b [
       :block/uuid
       :block/content
@@ -61,9 +61,9 @@ export async function queryAllTodos(): Promise<TodoBlock[]> {
      ${noDoneMarkerClause()}]
   `;
 
-  const results = await runQuery(query) as Array<Array<unknown>> | null;
-  if (!results || results.length === 0) return [];
-  return results.flat().map(normalizeTodo);
+ const results = await runQuery(query) as Array<Array<unknown>> | null;
+ if (!results || results.length === 0) return [];
+ return results.flat().map(normalizeTodo);
 }
 
 /**
@@ -71,11 +71,11 @@ export async function queryAllTodos(): Promise<TodoBlock[]> {
  * Get ALL journal days (across all years) that have at least one TODO/DONE block.
  */
 export async function queryJournalDaysWithTodos(year: number): Promise<Set<number>> {
-  const yStart = year * 10000 + 101;
-  const yEnd = year * 10000 + 1231;
+ const yStart = year * 10000 + 101;
+ const yEnd = year * 10000 + 1231;
 
-  // Days with regular TODO blocks
-  const query = `
+ // Days with regular TODO blocks
+ const query = `
     [:find ?day
      :where
      [?b :block/marker ?m]
@@ -85,13 +85,13 @@ export async function queryJournalDaysWithTodos(year: number): Promise<Set<numbe
      [(<= ?day ${yEnd})]]
   `;
 
-  const raw = await runQuery(query) as number[] | null;
-  if (!raw) return new Set<number>();
-  const flat = raw.flat(2) as number[];
-  const days = new Set(flat.filter((d) => typeof d === "number"));
+ const raw = await runQuery(query) as number[] | null;
+ if (!raw) return new Set<number>();
+ const flat = raw.flat(2) as number[];
+ const days = new Set(flat.filter((d) => typeof d === "number"));
 
-  // Also include days with reference blocks
-  const refQuery = `
+ // Also include days with reference blocks
+ const refQuery = `
     [:find ?day
      :where
      [?b :block/content ?content]
@@ -101,21 +101,21 @@ export async function queryJournalDaysWithTodos(year: number): Promise<Set<numbe
      [(>= ?day ${yStart})]
      [(<= ?day ${yEnd})]]
   `;
-  const refRaw = await runQuery(refQuery) as number[] | null;
-  if (refRaw) {
-    for (const d of refRaw.flat(2)) {
-      if (typeof d === "number") days.add(d);
-    }
+ const refRaw = await runQuery(refQuery) as number[] | null;
+ if (refRaw) {
+  for (const d of refRaw.flat(2)) {
+   if (typeof d === "number") days.add(d);
   }
+ }
 
-  return days;
+ return days;
 }
 
 /**
  * Query all TODO/DONE blocks for a specific journal day.
  */
 export async function queryDayTodos(journalDay: number): Promise<TodoBlock[]> {
-  const query = `
+ const query = `
     [:find (pull ?b [
       :block/uuid
       :block/content
@@ -129,23 +129,23 @@ export async function queryDayTodos(journalDay: number): Promise<TodoBlock[]> {
      ${markerClause()}]
   `;
 
-  const results = await runQuery(query) as Array<Array<unknown>> | null;
-  const todos = results ? results.flat().map(normalizeTodo) : [];
+ const results = await runQuery(query) as Array<Array<unknown>> | null;
+ const todos = results ? results.flat().map(normalizeTodo) : [];
 
-  // Also find and resolve reference blocks on this day
-  const refTodos = await queryAndResolveRefs(journalDay);
+ // Also find and resolve reference blocks on this day
+ const refTodos = await queryAndResolveRefs(journalDay);
 
-  // Deduplicate by uuid
-  const seen = new Set(todos.map((t) => t.uuid));
-  for (const rt of refTodos) {
-    if (!seen.has(rt.uuid)) todos.push(rt);
-  }
+ // Deduplicate by uuid
+ const seen = new Set(todos.map((t) => t.uuid));
+ for (const rt of refTodos) {
+  if (!seen.has(rt.uuid)) todos.push(rt);
+ }
 
-  return todos;
+ return todos;
 }
 
 async function queryAndResolveRefs(journalDay: number): Promise<TodoBlock[]> {
-  const refQuery = `
+ const refQuery = `
     [:find (pull ?b [
       :block/uuid
       :block/content
@@ -159,117 +159,123 @@ async function queryAndResolveRefs(journalDay: number): Promise<TodoBlock[]> {
      [?p :block/journal-day ${journalDay}]]
   `;
 
-  const refResults = await runQuery(refQuery) as Array<Array<unknown>> | null;
-  if (!refResults || refResults.length === 0) return [];
+ const refResults = await runQuery(refQuery) as Array<Array<unknown>> | null;
+ if (!refResults || refResults.length === 0) return [];
 
-  const todos: TodoBlock[] = [];
+ const todos: TodoBlock[] = [];
 
-  for (const raw of refResults.flat()) {
-    const block = normalizeTodo(raw);
-    // Extract UUIDs from ((uuid)) patterns — use matchAll to avoid g-flag lastIndex bugs
-    const matches = [...block.content.matchAll(/\(\(([a-f0-9-]+)\)\)/g)];
-    for (const match of matches) {
-      try {
-        const refBlock = await logseq.Editor.getBlock(match[1]);
-        if (!refBlock) {
-          console.warn("[time-log] getBlock returned null for ref:", match[1]);
-          continue;
-        }
-        if (!refBlock.marker || typeof refBlock.marker !== "string" || !(refBlock.marker in VALID_MARKERS)) {
-          console.warn("[time-log] ref block has no valid marker:", match[1], refBlock.marker);
-          continue;
-        }
-        todos.push({
-          ...block,
-          content: refBlock.content ?? block.content,
-          marker: refBlock.marker as TodoBlock["marker"],
-          priority: validatePriority(refBlock.priority),
-        });
-        break;
-      } catch (err) {
-        console.warn("[time-log] getBlock threw for ref:", match[1], err);
-      }
+ for (const raw of refResults.flat()) {
+  const block = normalizeTodo(raw);
+  // Extract UUIDs from ((uuid)) patterns — use matchAll to avoid g-flag lastIndex bugs
+  const matches = [...block.content.matchAll(/\(\(([a-f0-9-]+)\)\)/g)];
+  for (const match of matches) {
+   try {
+    const refBlock = await logseq.Editor.getBlock(match[1]);
+    if (!refBlock) {
+     console.warn("[time-log] getBlock returned null for ref:", match[1]);
+     continue;
     }
+    if (!refBlock.marker || typeof refBlock.marker !== "string" || !(refBlock.marker in VALID_MARKERS)) {
+     console.warn("[time-log] ref block has no valid marker:", match[1], refBlock.marker);
+     continue;
+    }
+    todos.push({
+     ...block,
+     content: cleanContent(refBlock.content) ?? block.content,
+     marker: refBlock.marker as TodoBlock["marker"],
+     priority: validatePriority(refBlock.priority),
+    });
+    break;
+   } catch (err) {
+    console.warn("[time-log] getBlock threw for ref:", match[1], err);
+   }
   }
+ }
 
-  return todos;
+ return todos;
 }
 
 async function runQuery(query: string): Promise<unknown[] | null> {
-  try {
-    const results = await logseq.DB.datascriptQuery(query);
-    console.log("[time-log] query result:", results);
-    return results;
-  } catch (err) {
-    console.error("[time-log] datascriptQuery threw:", err);
-    return null;
-  }
+ try {
+  const results = await logseq.DB.datascriptQuery(query);
+  console.log("[time-log] query result:", results);
+  return results;
+ } catch (err) {
+  console.error("[time-log] datascriptQuery threw:", err);
+  return null;
+ }
 }
 
 /* ── Normalization ── */
 
 function normalizeTodo(raw: unknown): TodoBlock {
-  if (!raw || typeof raw !== "object") {
-    return emptyTodo();
-  }
-  const block = raw as Record<string, unknown>;
-  const page = block.page && typeof block.page === "object"
-    ? block.page as Record<string, unknown>
-    : {};
+ if (!raw || typeof raw !== "object") {
+  return emptyTodo();
+ }
+ const block = raw as Record<string, unknown>;
+ const page = block.page && typeof block.page === "object"
+  ? block.page as Record<string, unknown>
+  : {};
 
-  return {
-    uuid: String(block.uuid ?? ""),
-    content: String(block.content ?? ""),
-    marker: validateMarker(block.marker),
-    priority: validatePriority(block.priority),
-    page: {
-      name: String(page.name ?? "Unknown"),
-      journalDay: typeof page["journal-day"] === "number"
-        ? page["journal-day"] as number
-        : null,
-      journal: page["journal?"] === true,
-    },
-  };
+ return {
+  uuid: String(block.uuid ?? ""),
+  content: String(block.content ?? ""),
+  marker: validateMarker(block.marker),
+  priority: validatePriority(block.priority),
+  page: {
+   name: String(page.name ?? "Unknown"),
+   journalDay: typeof page["journal-day"] === "number"
+    ? page["journal-day"] as number
+    : null,
+   journal: page["journal?"] === true,
+  },
+ };
+}
+
+/** Strip block properties like `id:: uuid` from display content. */
+function cleanContent(raw: string | null | undefined): string {
+ if (!raw) return "";
+ return raw.replace(/\s*\w+::\s*\S+/g, "").trim();
 }
 
 function emptyTodo(): TodoBlock {
-  return {
-    uuid: "",
-    content: "",
-    marker: "TODO",
-    priority: null,
-    page: { name: "Unknown", journalDay: null, journal: false },
-  };
+ return {
+  uuid: "",
+  content: "",
+  marker: "TODO",
+  priority: null,
+  page: { name: "Unknown", journalDay: null, journal: false },
+ };
 }
 
 const VALID_MARKERS: Record<string, TodoBlock["marker"]> = {
-  TODO: "TODO",
-  DOING: "DOING",
-  NOW: "NOW",
-  LATER: "LATER",
-  WAITING: "WAITING",
-  DONE: "DONE",
+ TODO: "TODO",
+ DOING: "DOING",
+ NOW: "NOW",
+ LATER: "LATER",
+ WAITING: "WAITING",
+ DONE: "DONE",
 };
 
 function validateMarker(raw: unknown): TodoBlock["marker"] {
-  if (typeof raw === "string" && raw in VALID_MARKERS) {
-    return VALID_MARKERS[raw];
-  }
-  return "TODO";
+ if (typeof raw === "string" && raw in VALID_MARKERS) {
+  return VALID_MARKERS[raw];
+ }
+ return "TODO";
 }
 
 function validatePriority(raw: unknown): TodoBlock["priority"] {
-  if (raw === "A" || raw === "B" || raw === "C") return raw;
-  return null;
+ if (raw === "A" || raw === "B" || raw === "C") return raw;
+ return null;
 }
 
 /* ── Grouping & sorting ── */
 
 export function groupTodos(todos: TodoBlock[]) {
-  return {
-    journal: todos.filter((t) => t.page.journal),
-    pages: todos.filter((t) => !t.page.journal),
-  };
+ return {
+  journal: todos.filter((t) => t.page.journal),
+  pages: todos.filter((t) => !t.page.journal),
+ };
 }
 
 /**
@@ -278,15 +284,15 @@ export function groupTodos(todos: TodoBlock[]) {
  * DOING → TODO → DONE, then NOW → LATER → WAITING
  */
 export function sortDayTodos(todos: TodoBlock[]): TodoBlock[] {
-  return [...todos].sort((a, b) => {
-    const pA = PRIORITY_ORDER[priorityKey(a.priority)] ?? 0;
-    const pB = PRIORITY_ORDER[priorityKey(b.priority)] ?? 0;
-    if (pA !== pB) return pA - pB;
+ return [...todos].sort((a, b) => {
+  const pA = PRIORITY_ORDER[priorityKey(a.priority)] ?? 0;
+  const pB = PRIORITY_ORDER[priorityKey(b.priority)] ?? 0;
+  if (pA !== pB) return pA - pB;
 
-    const mA = MARKER_ORDER[a.marker] ?? 99;
-    const mB = MARKER_ORDER[b.marker] ?? 99;
-    return mA - mB;
-  });
+  const mA = MARKER_ORDER[a.marker] ?? 99;
+  const mB = MARKER_ORDER[b.marker] ?? 99;
+  return mA - mB;
+ });
 }
 
 /**
@@ -294,115 +300,115 @@ export function sortDayTodos(todos: TodoBlock[]): TodoBlock[] {
  * Returns [priority label, todos][] ordered None → A → B → C.
  */
 export function groupDayTodosByPriority(todos: TodoBlock[]): Array<[string, TodoBlock[]]> {
-  const map = new Map<string, TodoBlock[]>();
-  for (const t of todos) {
-    const key = priorityKey(t.priority);
-    const group = map.get(key);
-    if (group) {
-      group.push(t);
-    } else {
-      map.set(key, [t]);
-    }
+ const map = new Map<string, TodoBlock[]>();
+ for (const t of todos) {
+  const key = priorityKey(t.priority);
+  const group = map.get(key);
+  if (group) {
+   group.push(t);
+  } else {
+   map.set(key, [t]);
   }
+ }
 
-  const order = ["", "A", "B", "C"];
-  const result: Array<[string, TodoBlock[]]> = [];
-  for (const k of order) {
-    const items = map.get(k);
-    if (items && items.length > 0) {
-      result.push([k === "" ? "No priority" : `Priority ${k}`, items]);
-    }
+ const order = ["", "A", "B", "C"];
+ const result: Array<[string, TodoBlock[]]> = [];
+ for (const k of order) {
+  const items = map.get(k);
+  if (items && items.length > 0) {
+   result.push([k === "" ? "No priority" : `Priority ${k}`, items]);
   }
-  return result;
+ }
+ return result;
 }
 
 /* ── Move to journal ── */
 
 export async function moveTodoToJournal(blockUuid: string, targetDay?: number): Promise<number> {
-  let journalDay: number;
-  let pageName: string;
-  try {
-    const stateToday = await logseq.App.getStateFromStore("today") as unknown;
-    console.log("[time-log] raw state today:", stateToday, typeof stateToday);
-    if (typeof stateToday === "string") {
-      // Use the state string as the page name directly (respects user's date format)
-      pageName = stateToday;
-      const parsed = new Date(stateToday);
-      if (!isNaN(parsed.getTime())) {
-        journalDay = parsed.getFullYear() * 10000 + (parsed.getMonth() + 1) * 100 + parsed.getDate();
-      } else {
-        // Can't parse — fall back to JS Date for journalDay, keep state string as pageName
-        const d = new Date();
-        journalDay = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
-      }
-    } else if (typeof stateToday === "number" && stateToday > 20000101) {
-      journalDay = stateToday;
-      const yyyy = Math.floor(journalDay / 10000);
-      const mm = String(Math.floor((journalDay % 10000) / 100)).padStart(2, "0");
-      const dd = String(journalDay % 100).padStart(2, "0");
-      pageName = `${yyyy}${mm}${dd}`;
-    } else {
-      throw new Error("no valid today in state");
-    }
-  } catch {
+ let journalDay: number;
+ let pageName: string;
+ try {
+  const stateToday = await logseq.App.getStateFromStore("today") as unknown;
+  console.log("[time-log] raw state today:", stateToday, typeof stateToday);
+  if (typeof stateToday === "string") {
+   // Use the state string as the page name directly (respects user's date format)
+   pageName = stateToday;
+   const parsed = new Date(stateToday);
+   if (!isNaN(parsed.getTime())) {
+    journalDay = parsed.getFullYear() * 10000 + (parsed.getMonth() + 1) * 100 + parsed.getDate();
+   } else {
+    // Can't parse — fall back to JS Date for journalDay, keep state string as pageName
     const d = new Date();
     journalDay = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
-    const yyyy = Math.floor(journalDay / 10000);
-    const mm = String(Math.floor((journalDay % 10000) / 100)).padStart(2, "0");
-    const dd = String(journalDay % 100).padStart(2, "0");
-    pageName = `${yyyy}${mm}${dd}`;
+   }
+  } else if (typeof stateToday === "number" && stateToday > 20000101) {
+   journalDay = stateToday;
+   const yyyy = Math.floor(journalDay / 10000);
+   const mm = String(Math.floor((journalDay % 10000) / 100)).padStart(2, "0");
+   const dd = String(journalDay % 100).padStart(2, "0");
+   pageName = `${yyyy}${mm}${dd}`;
+  } else {
+   throw new Error("no valid today in state");
   }
-  console.log("[time-log] resolved journalDay:", journalDay);
+ } catch {
+  const d = new Date();
+  journalDay = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+  const yyyy = Math.floor(journalDay / 10000);
+  const mm = String(Math.floor((journalDay % 10000) / 100)).padStart(2, "0");
+  const dd = String(journalDay % 100).padStart(2, "0");
+  pageName = `${yyyy}${mm}${dd}`;
+ }
+ console.log("[time-log] resolved journalDay:", journalDay);
 
-  console.log("[time-log] moveTodoToJournal:", { blockUuid, journalDay, pageName });
+ console.log("[time-log] moveTodoToJournal:", { blockUuid, journalDay, pageName });
 
-  // Determine target page: use targetDay if provided, otherwise today
-  const effectiveDay = targetDay ?? journalDay;
-  const effectivePageName = await resolveJournalPageName(effectiveDay) ?? pageName;
+ // Determine target page: use targetDay if provided, otherwise today
+ const effectiveDay = targetDay ?? journalDay;
+ const effectivePageName = await resolveJournalPageName(effectiveDay) ?? pageName;
 
-  console.log("[time-log] inserting into:", { effectiveDay, effectivePageName });
+ console.log("[time-log] inserting into:", { effectiveDay, effectivePageName });
 
-  const todosBlockUuid = await findOrCreateTodosBlock(effectivePageName);
-  const result = await logseq.Editor.insertBlock(todosBlockUuid, `((${blockUuid}))`, {
-    sibling: false,
-  });
-  console.log("[time-log] insertBlock result:", result);
+ const todosBlockUuid = await findOrCreateTodosBlock(effectivePageName);
+ const result = await logseq.Editor.insertBlock(todosBlockUuid, `((${blockUuid}))`, {
+  sibling: false,
+ });
+ console.log("[time-log] insertBlock result:", result);
 
-  try {
-    await logseq.Editor.setBlockCollapsed(todosBlockUuid, { flag: false });
-  } catch {}
+ try {
+  await logseq.Editor.setBlockCollapsed(todosBlockUuid, { flag: false });
+ } catch { }
 
-  return effectiveDay;
+ return effectiveDay;
 }
 
 async function resolveJournalPageName(day: number): Promise<string | null> {
-  const query = `
+ const query = `
     [:find (pull ?p [:block/name]) .
      :where
      [?p :block/journal-day ${day}]]
   `;
-  const result = await runQuery(query) as { name: string } | null;
-  return result?.name ?? null;
+ const result = await runQuery(query) as { name: string } | null;
+ return result?.name ?? null;
 }
 
 async function findOrCreateTodosBlock(pageName: string): Promise<string> {
-  try {
-    const blocks = await logseq.Editor.getPageBlocksTree(pageName);
-    for (const block of blocks) {
-      if (block.content && typeof block.content === "string" && block.content.includes("# Todos")) {
-        return block.uuid;
-      }
-    }
-  } catch (err) {
-    console.warn("[time-log] getPageBlocksTree failed, creating new # Todos:", err);
+ try {
+  const blocks = await logseq.Editor.getPageBlocksTree(pageName);
+  for (const block of blocks) {
+   if (block.content && typeof block.content === "string" && block.content.includes("# Todos")) {
+    return block.uuid;
+   }
   }
+ } catch (err) {
+  console.warn("[time-log] getPageBlocksTree failed, creating new # Todos:", err);
+ }
 
-  const block = await logseq.Editor.insertBlock(pageName, "# Todos", {
-    isPageBlock: true,
-    sibling: true,
-    properties: {},
-  });
-  return block?.uuid ?? "";
+ const block = await logseq.Editor.insertBlock(pageName, "# Todos", {
+  isPageBlock: true,
+  sibling: true,
+  properties: {},
+ });
+ return block?.uuid ?? "";
 }
 
 
@@ -410,37 +416,37 @@ async function findOrCreateTodosBlock(pageName: string): Promise<string> {
 
 /** Delete a single block from the journal page. */
 export async function deleteJournalBlock(blockUuid: string): Promise<void> {
-  await logseq.Editor.removeBlock(blockUuid);
+ await logseq.Editor.removeBlock(blockUuid);
 }
 
 /** Delete a TODO and all blocks that reference it. */
 export async function deleteTodoWithRefs(blockUuid: string): Promise<void> {
-  // Find all blocks that contain a reference to this block
-  const query = `
+ // Find all blocks that contain a reference to this block
+ const query = `
     [:find (pull ?b [:block/uuid]) ?content
      :where
      [?b :block/content ?content]
      [(clojure.string/includes? ?content "((${blockUuid}))")]]
   `;
-  const refs = await runQuery(query) as Array<[{ uuid: string }, string]> | null;
+ const refs = await runQuery(query) as Array<[{ uuid: string }, string]> | null;
 
-  // Delete all referencing blocks
-  if (refs) {
-    for (const [block] of refs) {
-      if (block?.uuid) {
-        try { await logseq.Editor.removeBlock(block.uuid); } catch {}
-      }
-    }
+ // Delete all referencing blocks
+ if (refs) {
+  for (const [block] of refs) {
+   if (block?.uuid) {
+    try { await logseq.Editor.removeBlock(block.uuid); } catch { }
+   }
   }
+ }
 
-  // Delete the original block
-  await logseq.Editor.removeBlock(blockUuid);
+ // Delete the original block
+ await logseq.Editor.removeBlock(blockUuid);
 }
 
 export function sortJournalTodos(todos: TodoBlock[]): TodoBlock[] {
-  return [...todos].sort((a, b) => (b.page.journalDay ?? 0) - (a.page.journalDay ?? 0));
+ return [...todos].sort((a, b) => (b.page.journalDay ?? 0) - (a.page.journalDay ?? 0));
 }
 
 export function sortPageTodos(todos: TodoBlock[]): TodoBlock[] {
-  return [...todos].sort((a, b) => a.page.name.localeCompare(b.page.name));
+ return [...todos].sort((a, b) => a.page.name.localeCompare(b.page.name));
 }
