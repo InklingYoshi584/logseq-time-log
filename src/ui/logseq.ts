@@ -219,7 +219,7 @@ function normalizeTodo(raw: unknown): TodoBlock {
 
  return {
   uuid: String(block.uuid ?? ""),
-  content: String(block.content ?? ""),
+  content: cleanContent(String(block.content ?? "")),
   marker: validateMarker(block.marker),
   priority: validatePriority(block.priority),
   page: {
