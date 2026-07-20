@@ -274,7 +274,6 @@ export async function moveTodoToJournal(blockUuid: string, content: string, targ
   console.log("[time-log] resolved journalDay:", journalDay);
 
   console.log("[time-log] moveTodoToJournal:", { blockUuid, journalDay, pageName });
-  const text = content ? `${content} ((${blockUuid}))` : `((${blockUuid}))`;
 
   // Determine target page: use targetDay if provided, otherwise today
   const effectiveDay = targetDay ?? journalDay;
@@ -283,10 +282,19 @@ export async function moveTodoToJournal(blockUuid: string, content: string, targ
   console.log("[time-log] inserting into:", { effectiveDay, effectivePageName });
 
   const todosBlockUuid = await findOrCreateTodosBlock(effectivePageName);
-  const result = await logseq.Editor.insertBlock(todosBlockUuid, text, {
+  const result = await logseq.Editor.insertBlock(todosBlockUuid, `((${blockUuid}))`, {
     sibling: false,
   });
   console.log("[time-log] insertBlock result:", result);
+
+  // Ensure the inserted block has a TODO marker so queries detect it
+  if (result?.uuid) {
+    try {
+      await logseq.Editor.upsertBlockProperty(result.uuid, "marker", "TODO");
+    } catch (err) {
+      console.warn("[time-log] failed to set TODO marker:", err);
+    }
+  }
 
   try {
     await logseq.Editor.setBlockCollapsed(todosBlockUuid, { flag: false });
