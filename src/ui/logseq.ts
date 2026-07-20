@@ -320,6 +320,7 @@ function normalizeTodo(raw: unknown): TodoBlock {
   marker: validateMarker(block.marker),
   priority: validatePriority(block.priority),
   parentUuid: parent?.uuid ? String(parent.uuid) : undefined,
+  duration: parseLogbookDuration(String(block.content ?? "")),
   page: {
    name: String(page.name ?? "Unknown"),
    journalDay: typeof page["journal-day"] === "number"
@@ -333,7 +334,29 @@ function normalizeTodo(raw: unknown): TodoBlock {
 /** Strip block properties like `id:: uuid` from display content. */
 function cleanContent(raw: string | null | undefined): string {
  if (!raw) return "";
- return raw.replace(/\s*\w+::\s*\S+/g, "").trim();
+ // Strip :LOGBOOK: ... :END: drawer
+ return raw.replace(/:\s*LOGBOOK\s*:[\s\S]*?:\s*END\s*:/gi, "").replace(/\s*\w+::\s*\S+/g, "").trim();
+}
+
+/** Parse total duration from LOGBOOK CLOCK entries. Returns "HH:MM:SS" or undefined. */
+export function parseLogbookDuration(raw: string | null | undefined): string | undefined {
+ if (!raw) return undefined;
+ const match = raw.match(/:\s*LOGBOOK\s*:([\s\S]*?):\s*END\s*:/i);
+ if (!match) return undefined;
+ const clocks = match[1].match(/=>\s*(\d{2}):(\d{2}):(\d{2})/g);
+ if (!clocks || clocks.length === 0) return undefined;
+ let totalSec = 0;
+ for (const c of clocks) {
+  const parts = c.match(/(\d{2}):(\d{2}):(\d{2})/);
+  if (parts) {
+   totalSec += parseInt(parts[1]) * 3600 + parseInt(parts[2]) * 60 + parseInt(parts[3]);
+  }
+ }
+ if (totalSec === 0) return undefined;
+ const h = Math.floor(totalSec / 3600);
+ const m = Math.floor((totalSec % 3600) / 60);
+ const s = totalSec % 60;
+ return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
 function emptyTodo(): TodoBlock {

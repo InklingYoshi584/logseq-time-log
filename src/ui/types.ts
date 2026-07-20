@@ -16,6 +16,7 @@ export interface TodoBlock {
   page: PageRef;
   parentUuid?: string;
   children?: TodoBlock[];
+  duration?: string; // total time from LOGBOOK, e.g. "00:15:30"
 }
 
 export type TabId = "journal" | "pages";

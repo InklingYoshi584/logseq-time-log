@@ -104,6 +104,9 @@ function DayTodoCard({ todo, onDelete, onChangeMarker, depth = 0 }: {
           <span className="todo-marker">{MARKER_BADGE[todo.marker] ?? todo.marker}</span>
         )}
         <span className="todo-content">{todo.content}</span>
+        {todo.duration && (
+          <span className="todo-duration" title={`Time spent: ${todo.duration}`}>⏱ {todo.duration}</span>
+        )}
         <button
           type="button"
           className="todo-delete-btn"

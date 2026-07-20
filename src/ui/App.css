@@ -325,6 +325,14 @@ html, body, #root {
   min-width: 0;
 }
 
+.todo-duration {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
 .todo-delete-btn {
   display: none;
   width: 22px;
