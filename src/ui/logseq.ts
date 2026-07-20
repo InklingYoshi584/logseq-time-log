@@ -495,6 +495,12 @@ export async function moveTodoToJournal(blockUuid: string, targetDay?: number): 
 
  console.log("[time-log] inserting into:", { effectiveDay, effectivePageName });
 
+ // Ensure the page exists as a journal page (sets :block/journal-day)
+ await logseq.Editor.createPage(effectivePageName, {}, {
+  journal: true,
+  createFirstBlock: false,
+ });
+
  const todosBlockUuid = await findOrCreateTodosBlock(effectivePageName);
  const result = await logseq.Editor.insertBlock(todosBlockUuid, `((${blockUuid}))`, {
   sibling: false,
