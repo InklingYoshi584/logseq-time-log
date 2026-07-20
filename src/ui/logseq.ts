@@ -336,7 +336,10 @@ function normalizeTodo(raw: unknown): TodoBlock {
 function cleanContent(raw: string | null | undefined): string {
  if (!raw) return "";
  // Strip :LOGBOOK: ... :END: drawer
- return raw.replace(/:\s*LOGBOOK\s*:[\s\S]*?:\s*END\s*:/gi, "").replace(/\s*\w+::\s*\S+/g, "").trim();
+ let s = raw.replace(/:\s*LOGBOOK\s*:[\s\S]*?:\s*END\s*:/gi, "").replace(/\s*\w+::\s*\S+/g, "").trim();
+ // Strip marker prefix (TODO, DOING, DONE, NOW, LATER, WAITING)
+ s = s.replace(/^(TODO|DOING|DONE|NOW|LATER|WAITING)\s+/i, "");
+ return s;
 }
 
 /** Parse total duration from LOGBOOK CLOCK entries. Returns "HH:MM:SS" or undefined. */
