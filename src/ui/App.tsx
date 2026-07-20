@@ -137,13 +137,21 @@ export default function App() {
   const handleDropOnJournal = useCallback(
     async (blockUuid: string) => {
       try {
-        await moveTodoToJournal(blockUuid);
-        await initYears();
+        const journalDay = await moveTodoToJournal(blockUuid);
+        // Immediately add the day to calendar data so it highlights
+        setDaysByYear((prev) => {
+          const next = new Map(prev);
+          const year = Math.floor(journalDay / 10000);
+          const days = new Set(next.get(year) ?? []);
+          days.add(journalDay);
+          next.set(year, days);
+          return next;
+        });
       } catch (err) {
         console.error("Failed to move TODO to journal:", err);
       }
     },
-    [initYears]
+    []
   );
 
   /* ── Journal tab content ── */

@@ -237,17 +237,26 @@ export function groupDayTodosByPriority(todos: TodoBlock[]): Array<[string, Todo
 
 /* ── Move to journal ── */
 
-export async function moveTodoToJournal(blockUuid: string): Promise<void> {
+export async function moveTodoToJournal(blockUuid: string): Promise<number> {
   const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  const todayPage = `${yyyy}${mm}${dd}`;
-  const todosBlockUuid = await findOrCreateTodosBlock(todayPage);
+  const journalDay = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
 
+  // Look up today's journal page by the journal-day attribute
+  const pageQuery = `
+    [:find (pull ?p [:block/name]) .
+     :where
+     [?p :block/journal-day ${journalDay}]]
+  `;
+  const pageResult = (await runQuery(pageQuery)) as { name: string } | null;
+  const fallback = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+  const pageName = pageResult?.name ?? fallback;
+
+  const todosBlockUuid = await findOrCreateTodosBlock(pageName);
   await logseq.Editor.insertBlock(todosBlockUuid, `((${blockUuid}))`, {
     sibling: false,
   });
+
+  return journalDay;
 }
 
 async function findOrCreateTodosBlock(pageName: string): Promise<string> {
