@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   DndContext,
   DragOverlay,
+  useDroppable,
   closestCenter,
   PointerSensor,
   useSensor,
@@ -249,8 +250,11 @@ function PrioritySection({
 }) {
   if (isEmpty && !isDragging) return null;
 
+  const { setNodeRef: setDroppableRef, isOver: isDroppableOver } = useDroppable({ id: priorityKey });
+
   return (
     <section
+      ref={setDroppableRef}
       className={`day-priority-section${isOver ? " drop-target-active" : ""}`}
       data-priority={priorityKey}
     >
