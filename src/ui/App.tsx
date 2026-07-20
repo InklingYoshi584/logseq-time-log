@@ -1,5 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
+import { useRef } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  pointerWithin,
+} from "@dnd-kit/core";
+import type { DragStartEvent, DragMoveEvent, DragEndEvent } from "@dnd-kit/core";
 import type { TodoBlock, TodoPriority } from "./types";
+import type { AppTab, TimeLogEntry, DragData } from "./types";
 import {
   queryAllTodos,
   queryJournalDaysWithTodos,
@@ -14,7 +25,13 @@ import {
   resolveJournalPageName,
   findOrCreateTodosBlock,
 } from "./logseq";
+import {
+  queryTimeLogEntries,
+  findOrCreateTimeLogBlock,
+  updateTimeLogEntry,
+} from "./logseq";
 import HeaderBar from "./components/HeaderBar";
+import TimeLogView from "./components/TimeLogView";
 import SplitView from "./components/SplitView";
 import CalendarView from "./components/CalendarView";
 import DayDetail from "./components/DayDetail";
@@ -22,6 +39,10 @@ import PageTodos from "./components/PageTodos";
 import PageDetail from "./components/PageDetail";
 
 const INITIAL_YEAR_WINDOW = 3;
+
+function formatHM(minutes: number): string {
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
 
 export default function App() {
   const [pageTodos, setPageTodos] = useState<TodoBlock[]>([]);
@@ -38,6 +59,15 @@ export default function App() {
 
   /* ── Misc state ── */
   const [selectedPage, setSelectedPage] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<AppTab>("tasks");
+  const [timeLogEntries, setTimeLogEntries] = useState<TimeLogEntry[]>([]);
+  const [timeLogLoading, setTimeLogLoading] = useState(false);
+  const [dragActiveData, setDragActiveData] = useState<DragData | null>(null);
+  const [dragOverMinutes, setDragOverMinutes] = useState<number | null>(null);
+  const [selectedBlockUuid, setSelectedBlockUuid] = useState<string | null>(null);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createModalRange, setCreateModalRange] = useState<{ start: number; end: number } | null>(null);
+  const [createModalName, setCreateModalName] = useState("");
 
   /* ── Close / ESC ── */
   const handleClose = useCallback(() => {
@@ -47,6 +77,10 @@ export default function App() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        if (selectedBlockUuid !== null) {
+          setSelectedBlockUuid(null);
+          return;
+        }
         if (selectedDay !== null) {
           setSelectedDay(null);
         } else if (selectedPage !== null) {
@@ -58,7 +92,9 @@ export default function App() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleClose, selectedDay, selectedPage]);
+  }, [handleClose, selectedDay, selectedPage, selectedBlockUuid]);
+
+  const timeLogSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   /* ── Year loading ── */
   const loadYear = useCallback(async (year: number) => {
@@ -138,6 +174,28 @@ export default function App() {
     // eslint-disable-next-line -- initial load
     initYears();
   }, [initYears]);
+
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
+    if (activeTab === "timelog") {
+      if (selectedDay !== null) {
+        setTimeLogLoading(true);
+        setSelectedBlockUuid(null);
+        queryTimeLogEntries(selectedDay).then(setTimeLogEntries).finally(() => setTimeLogLoading(false));
+      } else {
+        // Auto-select today when switching to Time Log tab with no day selected
+        const now = new Date();
+        const today = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
+        // Use handleSelectDay inline
+        setSelectedDay(today);
+        setDayLoading(true);
+        queryDayTodos(today).then(setDayTodos).catch(() => setDayTodos([])).finally(() => setDayLoading(false));
+        setTimeLogLoading(true);
+        queryTimeLogEntries(today).then(setTimeLogEntries).finally(() => setTimeLogLoading(false));
+      }
+    }
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [activeTab, selectedDay]);
 
   /* ── Day selection ── */
   const handleSelectDay = useCallback(async (day: number) => {
@@ -321,6 +379,134 @@ export default function App() {
     }
   }, [selectedDay]);
 
+  /* ── Time Log DnD ── */
+  const DEFAULT_HOUR_HEIGHT = 60;
+
+  function deltaToMinutes(deltaY: number): number {
+    return Math.round((deltaY / DEFAULT_HOUR_HEIGHT) * 60 / 5) * 5;
+  }
+
+  const computeDefaultMinutes = useCallback((): number => {
+    const now = new Date();
+    const mins = now.getHours() * 60 + now.getMinutes();
+    return Math.round(mins / 5) * 5;
+  }, []);
+
+  /* ── Time Log persistence ── */
+  const refreshTimeLog = useCallback(async () => {
+    if (selectedDay === null) return;
+    const entries = await queryTimeLogEntries(selectedDay);
+    setTimeLogEntries(entries);
+  }, [selectedDay]);
+
+  const createTimeLogEntryLoc = useCallback(async (todoUuid: string, startMinutes: number, endMinutes: number) => {
+    if (selectedDay === null) return;
+    const pageName = await resolveJournalPageName(selectedDay)
+      ?? `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`;
+    const blockUuid = await findOrCreateTimeLogBlock(pageName);
+    await logseq.Editor.insertBlock(blockUuid, `${formatHM(startMinutes)} - ${formatHM(endMinutes)} ((${todoUuid}))`, { sibling: false });
+    refreshTimeLog();
+  }, [selectedDay, refreshTimeLog]);
+
+  const createNonTaskEntry = useCallback(async (startMinutes: number, endMinutes: number, activity: string) => {
+    if (selectedDay === null) return;
+    const pageName = await resolveJournalPageName(selectedDay)
+      ?? `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`;
+    const blockUuid = await findOrCreateTimeLogBlock(pageName);
+    await logseq.Editor.insertBlock(blockUuid, `${formatHM(startMinutes)} - ${formatHM(endMinutes)} ${activity}`, { sibling: false });
+    refreshTimeLog();
+  }, [selectedDay, refreshTimeLog]);
+
+  const deleteTimeLogEntry = useCallback(async (uuid: string) => {
+    await logseq.Editor.removeBlock(uuid);
+    setSelectedBlockUuid(null);
+    refreshTimeLog();
+  }, [selectedDay, refreshTimeLog]);
+
+  const handleTimeLogDragStart = useCallback((event: DragStartEvent) => {
+    const data = event.active.data.current as DragData | undefined;
+    setDragActiveData(data ?? null);
+    if (data?.type === "journal-todo") {
+      setDragOverMinutes(null);
+    }
+  }, []);
+
+  const handleTimeLogDragMove = useCallback((event: DragMoveEvent) => {
+    const data = event.active.data.current as DragData | undefined;
+    if (!data || (data.type !== "journal-todo" && data.type !== "create-selection")) return;
+    // Calculate time from pointer delta relative to grid (60px/hour)
+    const deltaMinutes = deltaToMinutes(event.delta.y);
+    if (data.type === "journal-todo") {
+      const startMinutes = computeDefaultMinutes() + deltaMinutes;
+      setDragOverMinutes(Math.max(0, Math.min(23 * 60 + 59, startMinutes)));
+    }
+  }, [computeDefaultMinutes]);
+
+  const handleTimeLogDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event;
+    const data = active.data.current as DragData | undefined;
+    setDragActiveData(null);
+    setDragOverMinutes(null);
+    if (!data || !over) return;
+
+    const overId = String(over.id);
+
+    switch (data.type) {
+      case "journal-todo": {
+        if (overId !== "time-grid-zone" || !data.uuid || selectedDay === null) return;
+        const startMinutes = dragOverMinutes ?? computeDefaultMinutes();
+        const endMinutes = startMinutes + 25;
+        await createTimeLogEntryLoc(data.uuid, startMinutes, endMinutes);
+        break;
+      }
+      case "time-block": {
+        if (!data.uuid || data.startMinutes === undefined || data.endMinutes === undefined) return;
+        const duration = data.endMinutes - data.startMinutes;
+        const deltaMinutes = deltaToMinutes(event.delta.y);
+        const newStart = Math.max(0, Math.min(23 * 60 + 59 - duration, data.startMinutes + deltaMinutes));
+        const newEnd = newStart + duration;
+        await updateTimeLogEntry(data.uuid, newStart, newEnd);
+        refreshTimeLog();
+        break;
+      }
+      case "time-block-top": {
+        if (!data.uuid || data.endMinutes === undefined) return;
+        const deltaMinutes = deltaToMinutes(event.delta.y);
+        const newStart = Math.max(0, Math.min(data.endMinutes - 5, (data.startMinutes ?? 0) + deltaMinutes));
+        if (newStart >= data.endMinutes - 5) return;
+        await updateTimeLogEntry(data.uuid, newStart, data.endMinutes);
+        refreshTimeLog();
+        break;
+      }
+      case "time-block-bottom": {
+        if (!data.uuid || data.startMinutes === undefined) return;
+        const deltaMinutes = deltaToMinutes(event.delta.y);
+        const newEnd = Math.max(data.startMinutes + 5, Math.min(24 * 60, (data.endMinutes ?? data.startMinutes + 30) + deltaMinutes));
+        if (newEnd <= data.startMinutes + 5) return;
+        await updateTimeLogEntry(data.uuid, data.startMinutes, newEnd);
+        refreshTimeLog();
+        break;
+      }
+      case "create-selection": {
+        if (selectedDay === null) return;
+        const deltaMinutes = deltaToMinutes(event.delta.y);
+        const startMinutes = computeDefaultMinutes();
+        const endMinutes = Math.max(startMinutes + 15, startMinutes + deltaMinutes);
+        setCreateModalRange({ start: startMinutes, end: endMinutes });
+        setCreateModalName("");
+        setCreateModalOpen(true);
+        break;
+      }
+    }
+  }, [selectedDay, dragOverMinutes, computeDefaultMinutes]);
+
+  const handleDoubleClickBlock = useCallback((uuid: string) => {
+    const entry = timeLogEntries.find(e => e.uuid === uuid);
+    if (entry?.todoUuid) {
+      logseq.Editor.scrollToBlockInPage("", entry.todoUuid);
+    }
+  }, [timeLogEntries]);
+
   /* ── Journal (left) content ── */
   const journalContent = selectedDay !== null ? (
     <div
@@ -338,6 +524,7 @@ export default function App() {
       }}
     >
       <DayDetail
+        readOnly={activeTab === "timelog"}
         journalDay={selectedDay}
         pageName={
           `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`
@@ -385,24 +572,92 @@ export default function App() {
   );
 
   /* ── Misc (right) content ── */
-  const miscContent = selectedPage !== null ? (
-    <PageDetail pageName={selectedPage} onBack={handleBackToPages} onChangeMarker={handleChangeMarker} />
+  const rightContent = activeTab === "tasks" ? (
+    selectedPage !== null ? (
+      <PageDetail pageName={selectedPage} onBack={handleBackToPages} onChangeMarker={handleChangeMarker} />
+    ) : (
+      <PageTodos
+        todos={pageTodos}
+        loading={loading}
+        error={error}
+        onDelete={handlePageDelete}
+        onSelectPage={handleSelectPage}
+        onChangeMarker={handleChangeMarker}
+      />
+    )
   ) : (
-    <PageTodos
-      todos={pageTodos}
-      loading={loading}
-      error={error}
-      onDelete={handlePageDelete}
-      onSelectPage={handleSelectPage}
-      onChangeMarker={handleChangeMarker}
+    <TimeLogView
+      journalDay={selectedDay ?? Math.floor(new Date().getFullYear() * 10000 + (new Date().getMonth() + 1) * 100 + new Date().getDate())}
+      entries={timeLogEntries}
+      loading={timeLogLoading}
+      selectedBlockUuid={selectedBlockUuid}
+      onSelectBlock={setSelectedBlockUuid}
+      onDoubleClickBlock={handleDoubleClickBlock}
+      onDeleteBlock={deleteTimeLogEntry}
+      onDayChange={handleSelectDay}
     />
   );
 
   return (
     <div className="time-log-app">
-      <HeaderBar onRefresh={initYears} onClose={handleClose} />
+      <HeaderBar activeTab={activeTab} onTabChange={setActiveTab} onRefresh={initYears} onClose={handleClose} />
       <main className="time-log-content">
-        <SplitView left={journalContent} right={miscContent} />
+        {activeTab === "tasks" ? (
+          <SplitView left={journalContent} right={rightContent} />
+        ) : (
+          <DndContext
+            sensors={timeLogSensors}
+            collisionDetection={pointerWithin}
+            onDragStart={handleTimeLogDragStart}
+            onDragMove={handleTimeLogDragMove}
+            onDragEnd={handleTimeLogDragEnd}
+          >
+            <SplitView left={journalContent} right={rightContent} />
+            <DragOverlay>
+              {dragActiveData?.type === "journal-todo" && dragOverMinutes !== null && (
+                <div className="time-drag-overlay">
+                  {formatHM(dragOverMinutes)} - {formatHM(dragOverMinutes + 25)}
+                </div>
+              )}
+            </DragOverlay>
+          </DndContext>
+        )}
+
+        {createModalOpen && createModalRange && (
+          <div className="time-create-modal-overlay" onClick={() => setCreateModalOpen(false)}>
+            <div className="time-create-modal" onClick={(e) => e.stopPropagation()}>
+              <h3>New Entry</h3>
+              <p className="time-create-modal-range">
+                {formatHM(createModalRange.start)} - {formatHM(createModalRange.end)}
+              </p>
+              <input
+                type="text"
+                className="time-create-modal-input"
+                placeholder="Activity name"
+                value={createModalName}
+                onChange={(e) => setCreateModalName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && createModalName.trim()) {
+                    createNonTaskEntry(createModalRange.start, createModalRange.end, createModalName.trim());
+                    setCreateModalOpen(false);
+                  }
+                  if (e.key === "Escape") setCreateModalOpen(false);
+                }}
+                autoFocus
+              />
+              <div className="time-create-modal-actions">
+                <button className="time-create-modal-cancel" onClick={() => setCreateModalOpen(false)}>Cancel</button>
+                <button className="time-create-modal-create"
+                  onClick={() => {
+                    if (createModalName.trim()) {
+                      createNonTaskEntry(createModalRange.start, createModalRange.end, createModalName.trim());
+                      setCreateModalOpen(false);
+                    }
+                  }}>Create</button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

@@ -1,17 +1,17 @@
-import type { TabId, ViewLayout } from "../types";
+import type { AppTab, ViewLayout } from "../types";
 
 interface TabBarProps {
-  activeTab: TabId;
-  onTabChange: (tab: TabId) => void;
+  activeTab: AppTab;
+  onTabChange: (tab: AppTab) => void;
   viewLayout: ViewLayout;
   onToggleSplit: () => void;
   onRefresh: () => void;
   onClose: () => void;
 }
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: "journal", label: "Journal TODOs" },
-  { id: "pages", label: "Page TODOs" },
+const TABS: { id: AppTab; label: string }[] = [
+  { id: "tasks", label: "Tasks" },
+  { id: "timelog", label: "Time Log" },
 ];
 
 export default function TabBar({

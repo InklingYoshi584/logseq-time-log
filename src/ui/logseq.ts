@@ -1,4 +1,4 @@
-import type { TodoBlock, TodoPriority } from "./types";
+import type { TimeLogEntry, TodoBlock, TodoPriority } from "./types";
 
 /* ── Marker & priority ordering ── */
 
@@ -771,6 +771,127 @@ export async function queryPageTodosGroupedByTitle(pageName: string): Promise<Ar
  }
 
  return result;
+}
+
+/* ── Time Log ── */
+
+export async function findOrCreateTimeLogBlock(pageName: string): Promise<string> {
+ try {
+  const blocks = await logseq.Editor.getPageBlocksTree(pageName);
+  for (const block of blocks) {
+   if (block.content && typeof block.content === "string" && block.content.includes("# Time Log")) {
+    return block.uuid;
+   }
+  }
+ } catch (err) {
+  console.warn("[time-log] getPageBlocksTree failed, creating new # Time Log:", err);
+ }
+
+ const block = await logseq.Editor.insertBlock(pageName, "# Time Log", {
+  isPageBlock: true,
+  sibling: true,
+  properties: {},
+ });
+ return block?.uuid ?? "";
+}
+
+export function parseTimeLogEntry(raw: string, blockUuid: string, isClockEntry: boolean): TimeLogEntry | null {
+ const match = raw.match(/^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})\s+(.+)$/);
+ if (!match) return null;
+ const startMinutes = parseInt(match[1]) * 60 + parseInt(match[2]);
+ const endMinutes = parseInt(match[3]) * 60 + parseInt(match[4]);
+ let rest = match[5].trim();
+ let todoUuid: string | undefined;
+ const refMatch = rest.match(/\(\(([a-f0-9-]+)\)\)/);
+ if (refMatch) {
+  todoUuid = refMatch[1];
+  rest = rest.replace(/\(\([a-f0-9-]+\)\)/, "").trim();
+ }
+ return { uuid: blockUuid, startMinutes, endMinutes, activity: rest, todoUuid, isClockEntry };
+}
+
+export async function queryTimeLogEntries(journalDay: number): Promise<TimeLogEntry[]> {
+ let pageName = await resolveJournalPageName(journalDay);
+ if (!pageName) {
+  pageName = String(journalDay);
+ }
+ const timeLogUuid = await findOrCreateTimeLogBlock(pageName);
+ if (!timeLogUuid) return [];
+
+ const entries: TimeLogEntry[] = [];
+
+ // Manual entries from # Time Log children
+ try {
+  const blocks = await logseq.Editor.getPageBlocksTree(pageName);
+  const timeLogBlock = (blocks as Array<Record<string, unknown>>).find((b) => b.uuid === timeLogUuid);
+  if (timeLogBlock && timeLogBlock.children) {
+   const children = timeLogBlock.children as Array<Record<string, unknown>>;
+   for (const child of children) {
+    const entry = parseTimeLogEntry(String(child.content), String(child.uuid), false);
+    if (entry) entries.push(entry);
+   }
+  }
+ } catch (err) {
+  console.warn("[time-log] Failed to parse time log entries:", err);
+ }
+
+ // CLOCK entries from TODOs on the day
+ try {
+  const todos = await queryDayTodos(journalDay);
+  const seenTodoUuids = new Set(entries.map((e) => e.todoUuid).filter(Boolean));
+  for (const todo of todos) {
+   const rawBlock = await logseq.Editor.getBlock(todo.uuid);
+   const rawContent = typeof rawBlock?.content === "string" ? rawBlock.content : todo.content;
+   const clockRanges = parseClockRanges(rawContent);
+   for (let i = 0; i < clockRanges.length; i++) {
+    const cr = clockRanges[i];
+    // Deduplicate: skip CLOCK if we already have a manual entry for this todoUuid
+    if (todo.uuid && seenTodoUuids.has(todo.uuid)) continue;
+    entries.push({
+     uuid: `clock-${todo.uuid}-${i}`,
+     startMinutes: cr.startMinutes,
+     endMinutes: cr.endMinutes,
+     activity: cleanContent(todo.content) ?? todo.content,
+     todoUuid: todo.uuid,
+     isClockEntry: true,
+    });
+   }
+  }
+ } catch (err) {
+  console.warn("[time-log] Failed to parse CLOCK entries:", err);
+ }
+
+ return entries;
+}
+
+export function parseClockRanges(raw: string): Array<{ startMinutes: number; endMinutes: number }> {
+ const logbookMatch = raw.match(/:LOGBOOK:([\s\S]*?):END:/i);
+ if (!logbookMatch) return [];
+
+ const ranges: Array<{ startMinutes: number; endMinutes: number }> = [];
+ const matches = [...logbookMatch[1].matchAll(/CLOCK:\s*\[.*?(\d{2}):(\d{2}):\d{2}\]--\[.*?(\d{2}):(\d{2}):\d{2}\]/g)];
+ for (const match of matches) {
+  ranges.push({
+   startMinutes: parseInt(match[1]) * 60 + parseInt(match[2]),
+   endMinutes: parseInt(match[3]) * 60 + parseInt(match[4]),
+  });
+ }
+ return ranges;
+}
+
+function formatHM(minutes: number): string {
+ return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
+export async function updateTimeLogEntry(uuid: string, startMinutes: number, endMinutes: number): Promise<void> {
+ const block = await logseq.Editor.getBlock(uuid);
+ if (!block) return;
+ const content = String(block.content ?? "");
+ const match = content.match(/^(\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2})\s+(.*)$/);
+ if (!match) return;
+ const rest = match[2];
+ const newContent = `${formatHM(startMinutes)} - ${formatHM(endMinutes)} ${rest}`;
+ await logseq.Editor.updateBlock(uuid, newContent);
 }
 
 export function sortJournalTodos(todos: TodoBlock[]): TodoBlock[] {

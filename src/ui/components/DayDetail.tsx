@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import {
   DndContext,
   DragOverlay,
-  useDroppable,
+  useDroppable, useDraggable,
   closestCenter,
   PointerSensor,
   useSensor,
@@ -38,6 +38,7 @@ interface DayDetailProps {
   onEdit: (blockUuid: string, newContent: string) => void;
   onReorder: (activeUuid: string, overUuid: string) => void;
   onChangePriority: (blockUuid: string, priority: TodoPriority | null) => void;
+  readOnly?: boolean;
 }
 
 const MARKER_BADGE: Record<string, string> = {
@@ -56,7 +57,7 @@ function priorityFromKey(key: string): TodoPriority | null {
 
 export default function DayDetail({
   journalDay, pageName, todos, loading, onBack, onDelete,
-  onChangeMarker, onAddTodo, onRefresh, onReorder, onChangePriority, onEdit,
+  onChangeMarker, onAddTodo, onRefresh, onReorder, onChangePriority, onEdit, readOnly = false,
 }: DayDetailProps) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -171,7 +172,7 @@ export default function DayDetail({
         <h2 className="day-detail-date">{formatDay(journalDay)}</h2>
       </div>
 
-      <div className="add-todo-row">
+      {!readOnly && <div className="add-todo-row">
         <AddTodoBar onAdd={onAddTodo} />
         <div className="add-todo-divider" />
         <div className="sweep-bar">
@@ -179,7 +180,7 @@ export default function DayDetail({
             🧹
           </button>
         </div>
-      </div>
+      </div>}
       {sweepOpen && (
         <div className="sweep-popup">
           <div className="sweep-popup-header">
@@ -199,7 +200,7 @@ export default function DayDetail({
         </div>
       )}
 
-      <DndContext
+      {!readOnly ? (<DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragStart={handleDragStart}
@@ -237,7 +238,27 @@ export default function DayDetail({
             </div>
           ) : null}
         </DragOverlay>
-      </DndContext>
+      </DndContext>) : (
+        <div className="day-detail-sections">
+          {orderedKeys.map((key) => {
+            const items = sections.get(key) ?? [];
+            const isEmpty = items.length === 0;
+
+            return (
+              <section className="day-priority-section" data-priority={key}>
+                <h3 className="day-priority-heading">{PRIORITY_LABELS[key]}</h3>
+                {isEmpty ? null : (
+                  <div className="day-todo-list">
+                    {items.map((todo) => (
+                      <DraggableTodoCard key={todo.uuid} todo={todo} onChangeMarker={onChangeMarker} />
+                    ))}
+                  </div>
+                )}
+              </section>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -384,6 +405,70 @@ function SortableTodoCard({ todo, onDelete, onChangeMarker, onEdit, depth = 0 }:
       </div>
       {todo.children?.map((child) => (
         <SortableTodoCard key={child.uuid} todo={child} onDelete={onDelete} onChangeMarker={onChangeMarker} onEdit={onEdit} depth={depth + 1} />
+      ))}
+    </div>
+  );
+}
+
+/* ── Draggable Todo Card (read-only) ── */
+
+function DraggableTodoCard({ todo, onChangeMarker, depth = 0 }: {
+  todo: TodoBlock;
+  onChangeMarker: (uuid: string, marker: TodoBlock["marker"]) => void;
+  depth?: number;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: todo.uuid,
+    data: { type: "journal-todo" as const, uuid: todo.uuid },
+  });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  const toggleMarker = todo.marker === "TODO" ? "DOING" : todo.marker === "DOING" ? "TODO" : null;
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <div
+        className={`todo-card marker-${todo.marker.toLowerCase()}`}
+        style={{ paddingLeft: `${12 + Math.min(depth, 8) * 20}px` }}
+        data-depth={Math.min(depth, 8)}
+      >
+        <span className="todo-drag-handle" {...attributes} {...listeners}>⋮⋮</span>
+        <button
+          type="button"
+          className={`todo-checkbox${todo.marker === "DONE" ? " checked" : ""}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onChangeMarker(todo.uuid, todo.marker === "DONE" ? "TODO" : "DONE");
+          }}
+          title={todo.marker === "DONE" ? "Mark as TODO" : "Mark as DONE"}
+          aria-label="Toggle done"
+        />
+        {toggleMarker ? (
+          <button
+            type="button"
+            className="todo-marker todo-marker--clickable"
+            onClick={(e) => {
+              e.stopPropagation();
+              onChangeMarker(todo.uuid, toggleMarker);
+            }}
+            title={`Change to ${MARKER_BADGE[toggleMarker]}`}
+          >
+            {MARKER_BADGE[todo.marker]}
+          </button>
+        ) : (
+          <span className="todo-marker">{MARKER_BADGE[todo.marker]}</span>
+        )}
+        <span className="todo-content">{todo.content}</span>
+        {todo.duration && (
+          <span className="todo-duration" title={`Time spent: ${todo.duration}`}>⏱ {todo.duration}</span>
+        )}
+      </div>
+      {todo.children?.map((child) => (
+        <DraggableTodoCard key={child.uuid} todo={child} onChangeMarker={onChangeMarker} depth={depth + 1} />
       ))}
     </div>
   );

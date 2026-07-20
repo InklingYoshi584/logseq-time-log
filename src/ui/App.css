@@ -877,3 +877,484 @@ html, body, #root {
 .day-todo-list {
   transition: background 0.15s;
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   Time Log Tab
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* ── Header Bar Tabs ── */
+.header-bar-tabs {
+  display: flex;
+  gap: 2px;
+  margin-right: 8px;
+}
+.header-bar-tab {
+  padding: 5px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-family: var(--font);
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.header-bar-tab:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.header-bar-tab.active {
+  background: var(--ls-accent, var(--accent));
+  color: #fff;
+}
+
+/* ── Time Log View ── */
+.time-log-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+.time-log-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--bg-surface);
+}
+.time-log-date {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+  text-align: center;
+}
+.time-log-nav-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.time-log-nav-btn:hover {
+  background: var(--bg-elevated);
+}
+.time-log-today-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.time-log-today-btn:hover {
+  background: var(--bg-elevated);
+}
+.time-log-zoom {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.time-log-zoom-btn {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  font-family: var(--font-mono);
+  line-height: 1;
+}
+.time-log-zoom-btn:hover {
+  background: var(--bg-elevated);
+}
+.time-log-zoom-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  min-width: 36px;
+  text-align: center;
+}
+
+/* ── Time Grid ── */
+.time-grid {
+  display: flex;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* ── Hour Markers ── */
+.time-grid-markers {
+  width: 54px;
+  flex-shrink: 0;
+  position: relative;
+  border-right: 1px solid var(--border);
+  background: var(--bg-primary);
+  z-index: 1;
+}
+.time-grid-marker {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  padding-left: 4px;
+  height: 14px;
+  line-height: 14px;
+}
+.time-grid-marker::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  width: 8px;
+}
+.time-grid-marker--hour {
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.time-grid-marker--hour::after {
+  top: 50%;
+  height: 1px;
+  background: var(--border);
+}
+.time-grid-marker--half {
+  color: var(--text-muted);
+}
+.time-grid-marker--half::after {
+  top: 50%;
+  height: 1px;
+  background: var(--border);
+  opacity: 0.5;
+  border-top: 1px dashed var(--border);
+  background: transparent;
+}
+.time-grid-marker--quarter::after {
+  top: 50%;
+  height: 1px;
+  border-top: 1px dotted var(--border);
+  opacity: 0.3;
+  background: transparent;
+}
+
+/* ── Time Grid Zone ── */
+.time-grid-zone {
+  flex: 1;
+  position: relative;
+  min-height: 100%;
+}
+
+/* ── Current Time Line ── */
+.time-grid-now {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--danger, #f87171);
+  z-index: 3;
+  pointer-events: none;
+}
+.time-grid-now-dot {
+  position: absolute;
+  left: -5px;
+  top: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--danger, #f87171);
+}
+
+/* ── Create Overlay ── */
+.time-grid-create-overlay {
+  position: absolute;
+  top: 0;
+  left: 54px;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  cursor: crosshair;
+}
+
+/* ── Time Block ── */
+.time-block {
+  position: absolute;
+  border-radius: 4px;
+  font-size: 12px;
+  overflow: hidden;
+  cursor: grab;
+  z-index: 1;
+  border: 1px solid rgba(0,0,0,0.1);
+  transition: box-shadow 0.15s;
+  min-height: 2px;
+  user-select: none;
+}
+.time-block:hover {
+  z-index: 2;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.time-block--selected {
+  z-index: 4 !important;
+  box-shadow: 0 0 0 2px var(--text-primary), 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* Task-linked block */
+.time-block--task {
+  background: var(--ls-accent, var(--accent));
+  color: #fff;
+}
+/* Non-task (standalone event) block */
+.time-block--event {
+  background: #f59e0b;
+  color: #1a1a1a;
+}
+/* CLOCK entry block */
+.time-block--clock {
+  background: color-mix(in srgb, var(--ls-accent, #60a5fa) 18%, var(--bg-elevated, #e5e7eb) 82%);
+  color: var(--text-secondary);
+  border: 1px dashed var(--border);
+}
+
+/* Thin block mode */
+.time-block--thin {
+  border-radius: 0;
+  min-height: 3px;
+  cursor: pointer;
+}
+.time-block--thin .time-block-body {
+  display: none;
+}
+.time-block--thin::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+}
+.time-block--thin.time-block--task::before {
+  background: var(--ls-accent, var(--accent));
+}
+.time-block--thin.time-block--event::before {
+  background: #f59e0b;
+}
+.time-block--thin.time-block--clock::before {
+  background: var(--text-muted);
+}
+
+/* Block body */
+.time-block-body {
+  padding: 2px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+.time-block-time {
+  font-size: 9px;
+  opacity: 0.85;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  line-height: 1.2;
+}
+.time-block--clock .time-block-time {
+  opacity: 0.65;
+}
+.time-block-activity {
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+.time-block-icon {
+  font-size: 10px;
+  opacity: 0.7;
+  position: absolute;
+  top: 2px;
+  right: 4px;
+}
+
+/* Resize handles */
+.time-block-handle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 8px;
+  cursor: ns-resize;
+  z-index: 5;
+}
+.time-block-handle--top {
+  top: -4px;
+}
+.time-block-handle--bottom {
+  bottom: -4px;
+}
+
+/* Delete button */
+.time-block-delete {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 3px;
+  background: rgba(0,0,0,0.3);
+  color: #fff;
+  font-size: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 6;
+  transition: background 0.15s;
+}
+.time-block-delete:hover {
+  background: var(--danger, #f87171);
+}
+
+/* ── Drag Overlay ── */
+.time-drag-overlay {
+  padding: 6px 12px;
+  background: var(--ls-accent, var(--accent));
+  color: #fff;
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  white-space: nowrap;
+  opacity: 0.95;
+}
+
+/* ── Drag Handle on Journal TODOs ── */
+.todo-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+  font-size: 10px;
+  cursor: grab;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+  letter-spacing: -2px;
+  user-select: none;
+}
+.todo-card:hover .todo-drag-handle {
+  opacity: 1;
+}
+.todo-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* ── Creation Modal ── */
+.time-create-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.time-create-modal {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  width: 320px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+}
+.time-create-modal h3 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.time-create-modal-range {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  margin-bottom: 12px;
+}
+.time-create-modal-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: var(--font);
+  outline: none;
+  margin-bottom: 14px;
+  box-sizing: border-box;
+}
+.time-create-modal-input:focus {
+  border-color: var(--ls-accent, var(--accent));
+}
+.time-create-modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.time-create-modal-cancel,
+.time-create-modal-create {
+  padding: 7px 18px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.time-create-modal-cancel {
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+}
+.time-create-modal-cancel:hover {
+  background: var(--bg-elevated);
+}
+.time-create-modal-create {
+  border: none;
+  background: var(--ls-accent, var(--accent));
+  color: #fff;
+}
+.time-create-modal-create:hover {
+  opacity: 0.85;
+}
