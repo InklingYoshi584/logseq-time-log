@@ -514,19 +514,34 @@ async function findOrCreateTodosBlock(pageName: string): Promise<string> {
 
 /** Update a block's TODO marker. */
 export async function changeMarker(blockUuid: string, marker: string): Promise<void> {
- // If this is a reference block, update the ORIGINAL block's marker instead
  const block = await logseq.Editor.getBlock(blockUuid);
- const content = block?.content;
+ const content: string = typeof block?.content === "string" ? block.content : "";
+
+ // If this is a reference block, resolve to the original
  if (content && typeof content === "string") {
   const match = content.match(/\(\(([a-f0-9-]+)\)\)/);
   if (match) {
-   // This is a reference block — update the original
-   await logseq.Editor.upsertBlockProperty(match[1], "marker", marker);
+   const orig = await logseq.Editor.getBlock(match[1]);
+   if (orig?.content && typeof orig.content === "string") {
+    await logseq.Editor.updateBlock(match[1], setMarkerPrefix(orig.content, marker));
+   }
    return;
   }
  }
- // Not a reference — update directly
- await logseq.Editor.upsertBlockProperty(blockUuid, "marker", marker);
+ // Not a reference — update block content with new marker prefix
+ const newContent = setMarkerPrefix(content, marker);
+ await logseq.Editor.updateBlock(blockUuid, newContent);
+}
+
+/** Replace the TODO/DOING/DONE prefix in block content. */
+function setMarkerPrefix(content: string, marker: string): string {
+ const prefixes = ["TODO", "DOING", "DONE", "NOW", "LATER", "WAITING"];
+ for (const p of prefixes) {
+  if (content.startsWith(p + " ")) return marker + " " + content.slice(p.length + 1);
+  if (content === p) return marker;
+ }
+ // No prefix found — prepend
+ return marker + " " + content;
 }
 
 /** Delete a single block from the journal page. */
