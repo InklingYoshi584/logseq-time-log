@@ -61,8 +61,7 @@ html, body, #root {
   overscroll-behavior: contain;
 }
 
-/* ── Tab Bar ── */
-.tab-bar {
+.header-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -77,47 +76,21 @@ html, body, #root {
   z-index: 10;
 }
 
-.tab-bar-tabs {
-  display: flex;
-  gap: 2px;
-}
-
-.tab-bar-tab {
-  padding: 6px 14px;
-  border: none;
-  background: transparent;
-  position: relative;
-  z-index: 1;
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-family: var(--font);
-  cursor: pointer;
-  border-radius: var(--radius);
-  transition: background 0.15s, color 0.15s;
-}
-
-.tab-bar-tab:hover {
-  background: var(--bg-hover);
+.header-bar-title {
+  font-size: 14px;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
-.tab-bar-tab.active {
-  background: var(--bg-elevated);
-  color: var(--ls-accent, var(--accent));
-  font-weight: 600;
-}
-
-.tab-bar-actions {
+.header-bar-actions {
   display: flex;
   gap: 4px;
 }
 
-.tab-bar-btn {
+.header-bar-btn {
   width: 30px;
   height: 30px;
   border: none;
-  position: relative;
-  z-index: 1;
   background: transparent;
   color: var(--text-secondary);
   font-size: 16px;
@@ -129,12 +102,12 @@ html, body, #root {
   transition: background 0.15s, color 0.15s;
 }
 
-.tab-bar-btn:hover {
+.header-bar-btn:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
 }
 
-.tab-bar-close:hover {
+.header-bar-close:hover {
   background: var(--danger);
   color: #fff;
 }

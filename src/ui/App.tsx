@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import type { TodoBlock, TabId, ViewLayout } from "./types";
+import type { TodoBlock } from "./types";
 import {
   queryAllTodos,
   queryJournalDaysWithTodos,
@@ -11,7 +11,7 @@ import {
   deleteTodoWithRefs,
   changeMarker,
 } from "./logseq";
-import TabBar from "./components/TabBar";
+import HeaderBar from "./components/HeaderBar";
 import SplitView from "./components/SplitView";
 import CalendarView from "./components/CalendarView";
 import DayDetail from "./components/DayDetail";
@@ -21,8 +21,6 @@ import PageDetail from "./components/PageDetail";
 const INITIAL_YEAR_WINDOW = 3;
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<TabId>("journal");
-  const [viewLayout, setViewLayout] = useState<ViewLayout>("single");
   const [pageTodos, setPageTodos] = useState<TodoBlock[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,9 +30,11 @@ export default function App() {
   const [yearRange, setYearRange] = useState({ start: currentYear, end: currentYear });
   const [daysByYear, setDaysByYear] = useState<Map<number, Set<number>>>(new Map());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  const [selectedPage, setSelectedPage] = useState<string | null>(null);
   const [dayTodos, setDayTodos] = useState<TodoBlock[]>([]);
   const [dayLoading, setDayLoading] = useState(false);
+
+  /* ── Misc state ── */
+  const [selectedPage, setSelectedPage] = useState<string | null>(null);
 
   /* ── Close / ESC ── */
   const handleClose = useCallback(() => {
@@ -46,6 +46,8 @@ export default function App() {
       if (e.key === "Escape") {
         if (selectedDay !== null) {
           setSelectedDay(null);
+        } else if (selectedPage !== null) {
+          setSelectedPage(null);
         } else {
           handleClose();
         }
@@ -53,7 +55,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleClose, selectedDay]);
+  }, [handleClose, selectedDay, selectedPage]);
 
   /* ── Year loading ── */
   const loadYear = useCallback(async (year: number) => {
@@ -86,22 +88,17 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      // Load current year
       await loadYear(currentYear);
-
-      // Expand to window
       const half = Math.floor(INITIAL_YEAR_WINDOW / 2);
       const start = currentYear - half;
       const end = currentYear + half;
       setYearRange({ start, end });
-
       const promises = [];
       for (let y = start; y <= end; y++) {
         if (y !== currentYear) promises.push(loadYear(y));
       }
       await Promise.all(promises);
 
-      // Load page TODOs
       const pageResults = await queryAllTodos();
       const grouped = groupTodos(pageResults);
       setPageTodos(sortPageTodos(grouped.pages));
@@ -138,6 +135,7 @@ export default function App() {
     setDayTodos([]);
   }, []);
 
+  /* ── Misc page navigation ── */
   const handleSelectPage = useCallback((pageName: string) => {
     setSelectedPage(pageName);
   }, []);
@@ -151,7 +149,6 @@ export default function App() {
     async (blockUuid: string) => {
       try {
         const journalDay = await moveTodoToJournal(blockUuid, selectedDay ?? undefined);
-        // Immediately add the day to calendar data so it highlights
         setDaysByYear((prev) => {
           const next = new Map(prev);
           const year = Math.floor(journalDay / 10000);
@@ -160,7 +157,6 @@ export default function App() {
           next.set(year, days);
           return next;
         });
-        // If viewing a specific day, refresh its TODO list
         if (selectedDay !== null) {
           const todos = await queryDayTodos(journalDay);
           setDayTodos(todos);
@@ -198,13 +194,9 @@ export default function App() {
   const handleChangeMarker = useCallback(async (blockUuid: string, marker: string) => {
     try {
       await changeMarker(blockUuid, marker);
-      // Refresh the active view
       if (selectedDay !== null) {
         const todos = await queryDayTodos(selectedDay);
         setDayTodos(todos);
-      }
-      if (selectedPage !== null) {
-        // Page detail handles its own refresh
       }
       const pageResults = await queryAllTodos();
       const grouped = groupTodos(pageResults);
@@ -212,9 +204,9 @@ export default function App() {
     } catch (err) {
       console.error("Failed to change marker:", err);
     }
-  }, [selectedDay, selectedPage]);
+  }, [selectedDay]);
 
-  /* ── Journal tab content ── */
+  /* ── Journal (left) content ── */
   const journalContent = selectedDay !== null ? (
     <div
       className="journal-drop-zone"
@@ -264,8 +256,8 @@ export default function App() {
     </div>
   );
 
-  /* ── Page tab content ── */
-  const pageContent = selectedPage !== null ? (
+  /* ── Misc (right) content ── */
+  const miscContent = selectedPage !== null ? (
     <PageDetail pageName={selectedPage} onBack={handleBackToPages} onChangeMarker={handleChangeMarker} />
   ) : (
     <PageTodos
@@ -278,29 +270,11 @@ export default function App() {
     />
   );
 
-  const mainContent =
-    viewLayout === "split" ? (
-      <SplitView left={journalContent} right={pageContent} />
-    ) : activeTab === "journal" ? (
-      journalContent
-    ) : (
-      pageContent
-    );
-
   return (
     <div className="time-log-app">
+      <HeaderBar onRefresh={initYears} onClose={handleClose} />
       <main className="time-log-content">
-        <TabBar
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          viewLayout={viewLayout}
-          onToggleSplit={() =>
-            setViewLayout((v) => (v === "split" ? "single" : "split"))
-          }
-          onRefresh={initYears}
-          onClose={handleClose}
-        />
-        {mainContent}
+        <SplitView left={journalContent} right={miscContent} />
       </main>
     </div>
   );
