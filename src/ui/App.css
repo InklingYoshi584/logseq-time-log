@@ -228,7 +228,11 @@ html, body, #root {
   cursor: default;
   transition: background 0.12s;
   border: 1px solid transparent;
+  border-left: 2px solid transparent;
 }
+
+.todo-card:nth-child(1 of .todo-card) { /* first child at each depth — not needed for tree line */ }
+
 
 .todo-card:hover {
   background: var(--bg-surface);
@@ -498,4 +502,15 @@ html, body, #root {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
+}
+/* Tree line for nested items */
+.todo-card[data-depth="1"],
+.todo-card[data-depth="2"],
+.todo-card[data-depth="3"],
+.todo-card[data-depth="4"],
+.todo-card[data-depth="5"],
+.todo-card[data-depth="6"],
+.todo-card[data-depth="7"],
+.todo-card[data-depth="8"] {
+  border-left: 2px solid var(--border);
 }

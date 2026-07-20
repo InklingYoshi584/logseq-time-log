@@ -56,6 +56,7 @@ export async function queryAllTodos(): Promise<TodoBlock[]> {
       :block/marker
       :block/priority
       {:block/page [:block/name :block/journal? :block/journal-day]}
+      {:block/parent [:block/uuid]}
     ])
      :where
      ${noDoneMarkerClause()}]
@@ -63,7 +64,7 @@ export async function queryAllTodos(): Promise<TodoBlock[]> {
 
  const results = await runQuery(query) as Array<Array<unknown>> | null;
  if (!results || results.length === 0) return [];
- return results.flat().map(normalizeTodo);
+ return buildBlockTree(results.flat().map(normalizeTodo));
 }
 
 /**
@@ -122,6 +123,7 @@ export async function queryDayTodos(journalDay: number): Promise<TodoBlock[]> {
       :block/marker
       :block/priority
       {:block/page [:block/name :block/journal-day]}
+      {:block/parent [:block/uuid]}
     ])
      :where
      [?b :block/page ?p]
@@ -141,7 +143,10 @@ export async function queryDayTodos(journalDay: number): Promise<TodoBlock[]> {
   if (!seen.has(rt.uuid)) todos.push(rt);
  }
 
- return todos;
+ // Auto-nest reference blocks based on original parent-child hierarchy
+ await autoNestReferences(journalDay);
+
+ return buildBlockTree(todos);
 }
 
 async function queryAndResolveRefs(journalDay: number): Promise<TodoBlock[]> {
@@ -151,6 +156,7 @@ async function queryAndResolveRefs(journalDay: number): Promise<TodoBlock[]> {
       :block/content
       :block/priority
       {:block/page [:block/name :block/journal-day]}
+      {:block/parent [:block/uuid]}
     ])
      :where
      [?b :block/content ?content]
@@ -195,6 +201,93 @@ async function queryAndResolveRefs(journalDay: number): Promise<TodoBlock[]> {
  return todos;
 }
 
+/** Build a tree from flat blocks using parentUuid references. */
+export function buildBlockTree(blocks: TodoBlock[]): TodoBlock[] {
+ const map = new Map<string, TodoBlock>();
+ const roots: TodoBlock[] = [];
+
+ for (const b of blocks) {
+  map.set(b.uuid, { ...b, children: [] });
+ }
+
+ for (const b of blocks) {
+  const node = map.get(b.uuid)!;
+  if (b.parentUuid && map.has(b.parentUuid)) {
+   map.get(b.parentUuid)!.children!.push(node);
+  } else {
+   roots.push(node);
+  }
+ }
+
+ return roots;
+}
+
+/**
+ * Auto-nest reference blocks on the journal: if reference A and B exist,
+ * and on the original page B is a child of A, move B's reference under A's.
+ */
+export async function autoNestReferences(journalDay: number): Promise<void> {
+ // Get all reference blocks on this day
+ const refQuery = `
+    [:find (pull ?b [
+      :block/uuid
+      :block/content
+      {:block/parent [:block/uuid]}
+    ])
+     :where
+     [?b :block/content ?content]
+     [(clojure.string/includes? ?content "((")]
+     [?b :block/page ?p]
+     [?p :block/journal-day ${journalDay}]]
+  `;
+
+ const refResults = await runQuery(refQuery) as Array<Array<unknown>> | null;
+ if (!refResults || refResults.length === 0) return;
+
+ // Map: reference-block-uuid → original-block-uuid
+ const refMap = new Map<string, string>();
+ const uuidRe = /\(\(([a-f0-9-]+)\)\)/g;
+
+ for (const raw of refResults.flat()) {
+  const b = normalizeTodo(raw);
+  const match = uuidRe.exec(b.content);
+  uuidRe.lastIndex = 0;
+  if (match) refMap.set(b.uuid, match[1]);
+ }
+
+ // For each reference, check if original has a parent that also has a reference
+ for (const [refUuid, origUuid] of refMap) {
+  try {
+   const origBlock = await logseq.Editor.getBlock(origUuid);
+   if (!origBlock?.parent) continue;
+   const parentOrigUuid = typeof origBlock.parent === "string"
+    ? origBlock.parent
+    : (origBlock.parent as { uuid?: string })?.uuid;
+   if (!parentOrigUuid) continue;
+
+   // Find reference for the parent
+   let parentRefUuid: string | undefined;
+   for (const [rUuid, oUuid] of refMap) {
+    if (oUuid === parentOrigUuid) { parentRefUuid = rUuid; break; }
+   }
+   if (!parentRefUuid || parentRefUuid === refUuid) continue;
+
+   // Check if already nested
+   const refBlock = await logseq.Editor.getBlock(refUuid);
+   if (refBlock?.parent && typeof refBlock.parent !== "string") {
+    const currentParent = (refBlock.parent as { uuid?: string })?.uuid;
+    if (currentParent === parentRefUuid) continue; // already nested
+   }
+
+   // Move reference under parent reference
+   await logseq.Editor.moveBlock(refUuid, parentRefUuid, { children: true });
+   console.log("[time-log] nested ref", refUuid, "under", parentRefUuid);
+  } catch (err) {
+   console.warn("[time-log] autoNestReferences failed for", refUuid, err);
+  }
+ }
+}
+
 async function runQuery(query: string): Promise<unknown[] | null> {
  try {
   const results = await logseq.DB.datascriptQuery(query);
@@ -217,11 +310,16 @@ function normalizeTodo(raw: unknown): TodoBlock {
   ? block.page as Record<string, unknown>
   : {};
 
+ const parent = block.parent && typeof block.parent === "object"
+  ? block.parent as Record<string, unknown>
+  : null;
+
  return {
   uuid: String(block.uuid ?? ""),
   content: cleanContent(String(block.content ?? "")),
   marker: validateMarker(block.marker),
   priority: validatePriority(block.priority),
+  parentUuid: parent?.uuid ? String(parent.uuid) : undefined,
   page: {
    name: String(page.name ?? "Unknown"),
    journalDay: typeof page["journal-day"] === "number"

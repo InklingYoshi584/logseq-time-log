@@ -61,20 +61,30 @@ export default function DayDetail({ journalDay, todos, loading, onBack, onDelete
   );
 }
 
-function DayTodoCard({ todo, onDelete }: { todo: TodoBlock; onDelete: (uuid: string) => void }) {
+function DayTodoCard({ todo, onDelete, depth = 0 }: { todo: TodoBlock; onDelete: (uuid: string) => void; depth?: number }) {
+  const indent = Math.min(depth, 8);
   return (
-    <div className={`todo-card marker-${todo.marker.toLowerCase()} todo-card--deletable`}>
-      <span className="todo-marker">{MARKER_BADGE[todo.marker] ?? todo.marker}</span>
-      <span className="todo-content">{todo.content}</span>
-      <button
-        type="button"
-        className="todo-delete-btn"
-        onClick={(e) => { e.stopPropagation(); onDelete(todo.uuid); }}
-        title="Delete"
+    <>
+      <div
+        className={`todo-card marker-${todo.marker.toLowerCase()} todo-card--deletable`}
+        style={{ paddingLeft: `${12 + indent * 20}px` }}
+        data-depth={indent}
       >
-        ✕
-      </button>
-    </div>
+        <span className="todo-marker">{MARKER_BADGE[todo.marker] ?? todo.marker}</span>
+        <span className="todo-content">{todo.content}</span>
+        <button
+          type="button"
+          className="todo-delete-btn"
+          onClick={(e) => { e.stopPropagation(); onDelete(todo.uuid); }}
+          title="Delete"
+        >
+          ✕
+        </button>
+      </div>
+      {todo.children?.map((child) => (
+        <DayTodoCard key={child.uuid} todo={child} onDelete={onDelete} depth={depth + 1} />
+      ))}
+    </>
   );
 }
 

@@ -14,6 +14,8 @@ export interface TodoBlock {
   marker: TodoMarker;
   priority: TodoPriority | null;
   page: PageRef;
+  parentUuid?: string;
+  children?: TodoBlock[];
 }
 
 export type TabId = "journal" | "pages";
