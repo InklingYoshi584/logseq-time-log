@@ -231,11 +231,14 @@ export default function App() {
       }
       if (!rawContent || typeof rawContent !== "string") return;
       console.log("[time-log] changePriority:", { blockUuid, targetUuid, priority, rawContent });
-      // Strip existing priority tag, then add new one
+      // Replace or add priority tag, preserve the rest
       let body = rawContent.replace(/^\[#(A|B|C)\]\s*/, "");
-      body = body.replace(/^(TODO|DOING|DONE|NOW|LATER|WAITING)\s+/i, "");
       if (priority) {
-        body = `[#${priority}] ${body}`;
+        // Insert priority tag after marker prefix if present
+        body = body.replace(/^(TODO|DOING|DONE|NOW|LATER|WAITING)\s+/i, `$1 [#${priority}] `);
+        if (!body.includes("[#")) {
+          body = `[#${priority}] ${body}`;
+        }
       }
       console.log("[time-log] changePriority new content:", body);
       await logseq.Editor.updateBlock(targetUuid, body);
