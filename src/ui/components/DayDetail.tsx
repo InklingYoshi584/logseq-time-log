@@ -160,6 +160,17 @@ export default function DayDetail({
     );
   }
 
+  // Sort sections: visible first, empty last (prevents cursor offset during drag)
+  const orderedKeys = useMemo(() => {
+    return [...ALL_PRIORITY_KEYS].sort((a, b) => {
+      const aEmpty = (sections.get(a)?.length ?? 0) === 0;
+      const bEmpty = (sections.get(b)?.length ?? 0) === 0;
+      if (aEmpty && !bEmpty) return 1;
+      if (!aEmpty && bEmpty) return -1;
+      return ALL_PRIORITY_KEYS.indexOf(a) - ALL_PRIORITY_KEYS.indexOf(b);
+    });
+  }, [sections]);
+
   return (
     <div className="day-detail">
       <div className="day-detail-header">
@@ -203,7 +214,7 @@ export default function DayDetail({
         onDragEnd={handleDragEnd}
       >
         <div className="day-detail-sections">
-          {ALL_PRIORITY_KEYS.map((key) => {
+          {orderedKeys.map((key) => {
             const items = sections.get(key) ?? [];
             const isEmpty = items.length === 0;
             const isOver = overPriority === key;
