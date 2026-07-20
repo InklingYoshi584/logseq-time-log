@@ -105,12 +105,16 @@ export default function App() {
 
       // Auto-select today
       if (selectedDay === null) {
+        console.log("[time-log] auto-selecting today...");
         try {
           const stateToday = await logseq.App.getStateFromStore("today") as unknown;
+          console.log("[time-log] state today:", stateToday);
           if (typeof stateToday === "string") {
             const d = new Date(stateToday);
+            console.log("[time-log] parsed date:", d);
             if (!isNaN(d.getTime())) {
               const day = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+              console.log("[time-log] auto-selecting day:", day);
               setSelectedDay(day);
               setDayLoading(true);
               const todos = await queryDayTodos(day);
@@ -118,7 +122,9 @@ export default function App() {
               setDayLoading(false);
             }
           }
-        } catch { /* ignore */ }
+        } catch (err) {
+          console.error("[time-log] auto-select failed:", err);
+        }
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
