@@ -22,6 +22,23 @@ function priorityKey(p: TodoPriority | null): string {
  return p ?? "";
 }
 
+const MONTH_ABBR: Record<string, number> = {
+ jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+ jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
+};
+
+/** Parse Logseq date strings like "Jul 20th, 2026" into an integer YYYYMMDD. */
+export function parseLogseqDate(raw: unknown): number | null {
+ if (typeof raw !== "string") return null;
+ const match = raw.match(/(\w{3})\s+(\d+)\w*,?\s*(\d{4})/i);
+ if (!match) return null;
+ const month = MONTH_ABBR[match[1].toLowerCase()];
+ if (!month) return null;
+ const day = parseInt(match[2], 10);
+ const year = parseInt(match[3], 10);
+ return year * 10000 + month * 100 + day;
+}
+
 /* ── Datalog helpers ── */
 
 function markerClause(): string {
@@ -458,11 +475,10 @@ export async function moveTodoToJournal(blockUuid: string, targetDay?: number): 
   if (typeof stateToday === "string") {
    // Use the state string as the page name directly (respects user's date format)
    pageName = stateToday;
-   const parsed = new Date(stateToday);
-   if (!isNaN(parsed.getTime())) {
-    journalDay = parsed.getFullYear() * 10000 + (parsed.getMonth() + 1) * 100 + parsed.getDate();
+   const parsed = parseLogseqDate(stateToday);
+   if (parsed) {
+    journalDay = parsed;
    } else {
-    // Can't parse — fall back to JS Date for journalDay, keep state string as pageName
     const d = new Date();
     journalDay = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
    }

@@ -10,6 +10,7 @@ import {
   deleteJournalBlock,
   deleteTodoWithRefs,
   changeMarker,
+  parseLogseqDate,
 } from "./logseq";
 import HeaderBar from "./components/HeaderBar";
 import SplitView from "./components/SplitView";
@@ -109,18 +110,14 @@ export default function App() {
         try {
           const stateToday = await logseq.App.getStateFromStore("today") as unknown;
           console.log("[time-log] state today:", stateToday);
-          if (typeof stateToday === "string") {
-            const d = new Date(stateToday);
-            console.log("[time-log] parsed date:", d);
-            if (!isNaN(d.getTime())) {
-              const day = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
-              console.log("[time-log] auto-selecting day:", day);
-              setSelectedDay(day);
-              setDayLoading(true);
-              const todos = await queryDayTodos(day);
-              setDayTodos(todos);
-              setDayLoading(false);
-            }
+          const day = parseLogseqDate(stateToday);
+          if (day) {
+            console.log("[time-log] auto-selecting day:", day);
+            setSelectedDay(day);
+            setDayLoading(true);
+            const todos = await queryDayTodos(day);
+            setDayTodos(todos);
+            setDayLoading(false);
           }
         } catch (err) {
           console.error("[time-log] auto-select failed:", err);
