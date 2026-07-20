@@ -163,12 +163,12 @@ async function queryAndResolveRefs(journalDay: number): Promise<TodoBlock[]> {
   if (!refResults || refResults.length === 0) return [];
 
   const todos: TodoBlock[] = [];
-  const uuidRe = /\(\(([a-f0-9-]+)\)\)/g;
 
   for (const raw of refResults.flat()) {
     const block = normalizeTodo(raw);
-    let match: RegExpExecArray | null;
-    while ((match = uuidRe.exec(block.content)) !== null) {
+    // Extract UUIDs from ((uuid)) patterns — use matchAll to avoid g-flag lastIndex bugs
+    const matches = [...block.content.matchAll(/\(\(([a-f0-9-]+)\)\)/g)];
+    for (const match of matches) {
       try {
         const refBlock = await logseq.Editor.getBlock(match[1]);
         if (!refBlock) {
