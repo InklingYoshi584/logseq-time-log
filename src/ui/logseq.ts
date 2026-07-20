@@ -342,6 +342,8 @@ function cleanContent(raw: string | null | undefined): string {
 export function parseLogbookDuration(raw: string | null | undefined): string | undefined {
  if (!raw) return undefined;
  const match = raw.match(/:\s*LOGBOOK\s*:([\s\S]*?):\s*END\s*:/i);
+ console.log("[time-log] parseLogbookDuration raw:", JSON.stringify(raw.slice(0, 200)));
+ console.log("[time-log] LOGBOOK match:", match ? "found" : "not found");
  if (!match) return undefined;
  const clocks = match[1].match(/=>\s*(\d{2}):(\d{2}):(\d{2})/g);
  if (!clocks || clocks.length === 0) return undefined;
