@@ -325,6 +325,38 @@ async function findOrCreateTodosBlock(pageName: string): Promise<string> {
   return block?.uuid ?? "";
 }
 
+
+/* ── Delete ── */
+
+/** Delete a single block from the journal page. */
+export async function deleteJournalBlock(blockUuid: string): Promise<void> {
+  await logseq.Editor.removeBlock(blockUuid);
+}
+
+/** Delete a TODO and all blocks that reference it. */
+export async function deleteTodoWithRefs(blockUuid: string): Promise<void> {
+  // Find all blocks that contain a reference to this block
+  const query = `
+    [:find (pull ?b [:block/uuid]) ?content
+     :where
+     [?b :block/content ?content]
+     [(clojure.string/includes? ?content "((${blockUuid}))")]]
+  `;
+  const refs = await runQuery(query) as Array<[{ uuid: string }, string]> | null;
+
+  // Delete all referencing blocks
+  if (refs) {
+    for (const [block] of refs) {
+      if (block?.uuid) {
+        try { await logseq.Editor.removeBlock(block.uuid); } catch {}
+      }
+    }
+  }
+
+  // Delete the original block
+  await logseq.Editor.removeBlock(blockUuid);
+}
+
 export function sortJournalTodos(todos: TodoBlock[]): TodoBlock[] {
   return [...todos].sort((a, b) => (b.page.journalDay ?? 0) - (a.page.journalDay ?? 0));
 }

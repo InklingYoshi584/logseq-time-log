@@ -7,6 +7,8 @@ import {
   groupTodos,
   sortPageTodos,
   moveTodoToJournal,
+  deleteJournalBlock,
+  deleteTodoWithRefs,
 } from "./logseq";
 import TabBar from "./components/TabBar";
 import SplitView from "./components/SplitView";
@@ -159,6 +161,29 @@ export default function App() {
     [selectedDay]
   );
 
+  const handleJournalDelete = useCallback(async (blockUuid: string) => {
+    try {
+      await deleteJournalBlock(blockUuid);
+      if (selectedDay !== null) {
+        const todos = await queryDayTodos(selectedDay);
+        setDayTodos(todos);
+      }
+    } catch (err) {
+      console.error("Failed to delete journal block:", err);
+    }
+  }, [selectedDay]);
+
+  const handlePageDelete = useCallback(async (blockUuid: string) => {
+    try {
+      await deleteTodoWithRefs(blockUuid);
+      const pageResults = await queryAllTodos();
+      const grouped = groupTodos(pageResults);
+      setPageTodos(sortPageTodos(grouped.pages));
+    } catch (err) {
+      console.error("Failed to delete TODO:", err);
+    }
+  }, []);
+
   /* ── Journal tab content ── */
   const journalContent = selectedDay !== null ? (
     <div
@@ -180,6 +205,7 @@ export default function App() {
         todos={dayTodos}
         loading={dayLoading}
         onBack={handleBackToCalendar}
+      onDelete={handleJournalDelete}
       />
     </div>
   ) : (
@@ -208,7 +234,7 @@ export default function App() {
   );
 
   /* ── Page tab content ── */
-  const pageContent = <PageTodos todos={pageTodos} loading={loading} error={error} />;
+  const pageContent = <PageTodos todos={pageTodos} loading={loading} error={error} onDelete={handlePageDelete} />;
 
   const mainContent =
     viewLayout === "split" ? (

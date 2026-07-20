@@ -5,9 +5,10 @@ interface PageTodosProps {
   todos: TodoBlock[];
   loading: boolean;
   error: string | null;
+  onDelete?: (uuid: string) => void;
 }
 
-export default function PageTodos({ todos, loading, error }: PageTodosProps) {
+export default function PageTodos({ todos, loading, error, onDelete }: PageTodosProps) {
   if (error) {
     return (
       <div className="todo-list">
@@ -37,7 +38,7 @@ export default function PageTodos({ todos, loading, error }: PageTodosProps) {
         <section key={pageName} className="todo-page-group">
           <h3 className="todo-page-heading">{pageName}</h3>
           {pageTodos.map((todo) => (
-            <TodoCard key={todo.uuid} todo={todo} draggable />
+            <TodoCard key={todo.uuid} todo={todo} draggable onDelete={onDelete} />
           ))}
         </section>
       ))}
