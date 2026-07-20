@@ -174,6 +174,7 @@ async function queryAndResolveRefs(journalDay: number): Promise<TodoBlock[]> {
         if (refBlock?.marker && typeof refBlock.marker === "string" && refBlock.marker in VALID_MARKERS) {
           todos.push({
             ...block,
+            content: refBlock.content ?? block.content,
             marker: refBlock.marker as TodoBlock["marker"],
             priority: validatePriority(refBlock.priority),
           });
