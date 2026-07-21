@@ -514,8 +514,16 @@ export default function App() {
   const scrollEl = gridScrollRef.current;
   if (!scrollEl) return;
 
-  const deltaY = event.delta.y;
-  const relativeY = (dragStartPixelRef.current ?? 0) + deltaY;
+  let relativeY: number;
+  if (data.type === "create-selection") {
+   relativeY = (dragStartPixelRef.current ?? 0) + event.delta.y;
+  } else {
+   const gridRect = scrollEl.getBoundingClientRect();
+   const translated = event.active.rect.current.translated;
+   if (!translated) return;
+   const pointerY = translated.top + translated.height / 2;
+   relativeY = pointerY - gridRect.top + scrollEl.scrollTop;
+  }
   const minutes = (relativeY / timeLogHourHeight) * 60;
   const snapped = Math.round(minutes / 5) * 5;
   setDragOverMinutes(Math.max(0, Math.min(23 * 60 + 55, snapped)));
