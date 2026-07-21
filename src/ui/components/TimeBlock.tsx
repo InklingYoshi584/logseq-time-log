@@ -131,6 +131,7 @@ export default function TimeBlock({ entry, style, displayStart, displayEnd, isSe
                 }}
                 onBlur={(e) => onRename?.(entry.uuid, e.target.value.trim() || entry.activity)}
                 onKeyDown={(e) => {
+                  e.stopPropagation();
                   if (e.key === "Enter") onRename?.(entry.uuid, (e.target as HTMLInputElement).value.trim() || entry.activity);
                   if (e.key === "Escape") onRename?.(entry.uuid, entry.activity);
                 }}

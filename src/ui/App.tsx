@@ -602,13 +602,17 @@ export default function App() {
     // Find the newly created entry and open inline edit
     const entries = await queryTimeLogEntries(selectedDay);
     const newEntry = entries.find(e => e.startMinutes === startMinutes && e.endMinutes === endMinutes && !e.isClockEntry);
-    if (newEntry) setEditingBlockUuid(newEntry.uuid);
+    if (newEntry) {
+     setSelectedBlockUuid(null);
+     setEditingBlockUuid(newEntry.uuid);
+    }
     break;
    }
   }
  }, [selectedDay]);
 
  const handleDoubleClickBlock = useCallback((uuid: string) => {
+  setSelectedBlockUuid(null);
   setEditingBlockUuid(uuid);
  }, []);
 
