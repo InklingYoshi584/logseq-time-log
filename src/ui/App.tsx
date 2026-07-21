@@ -500,7 +500,6 @@ export default function App() {
    setDragActiveData(null);
   }
   if (data?.type === "create-selection") {
-   console.log("[time-log] create-selection dragStart", { type: data?.type, hasActivator: !!event.activatorEvent });
    const scrollEl = gridScrollRef.current;
    if (scrollEl) {
     const gridRect = scrollEl.getBoundingClientRect();
@@ -509,7 +508,6 @@ export default function App() {
     const relativeY = (ae as PointerEvent).clientY - gridRect.top + scrollEl.scrollTop;
     const minutes = (relativeY / timeLogHourHeight) * 60;
     const start = Math.round(minutes / 5) * 5;
-    console.log("[time-log] CBD dragStart position", { clientY: (ae as PointerEvent).clientY, relativeY: Math.round(relativeY), minutes: minutes.toFixed(1), start });
     dragStartRef.current = start;
     dragStartPixelRef.current = relativeY;
     setDragStartMinutes(start);
@@ -598,7 +596,6 @@ export default function App() {
     break;
    }
    case "create-selection": {
-    console.log("[time-log] CBD dragEnd", { startMinutesValue, overMinutes });
     if (selectedDay === null) return;
     const startMinutes = startMinutesValue ?? computeDefaultMinutes();
     const endMinutes = overMinutes !== null ? Math.max(startMinutes + 5, Math.min(24 * 60, overMinutes)) : startMinutes + 25;
@@ -635,6 +632,7 @@ export default function App() {
    if (todoUuid) {
     // Shift-drop: replace entire content with just the reference
     await logseq.Editor.updateBlock(uuid, `${timePart} ((${todoUuid}))`);
+    updateEntryLocal(uuid, { activity: "", todoUuid });
     // Refresh to get updated entry with todoUuid
     await refreshTimeLog();
    } else {
