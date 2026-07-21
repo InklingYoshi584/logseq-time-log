@@ -17,7 +17,7 @@ interface TimeLogViewProps {
  onSelectBlock: (uuid: string | null) => void;
  onDoubleClickBlock: (uuid: string) => void;
  editingBlockUuid?: string | null;
- onRenameBlock?: (uuid: string, name: string) => void;
+ onRenameBlock?: (uuid: string, name: string, todoUuid?: string) => void;
  onDeleteBlock: (uuid: string) => void;
  onDayChange: (day: number) => void;
  nativeDragState?: { uuid: string; content: string; startMinutes: number | null } | null;

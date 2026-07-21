@@ -612,14 +612,18 @@ export default function App() {
   setEditingBlockUuid(uuid);
  }, []);
 
- const handleRenameBlock = useCallback(async (uuid: string, newName: string) => {
+ const handleRenameBlock = useCallback(async (uuid: string, newName: string, todoUuid?: string) => {
   const block = await logseq.Editor.getBlock(uuid);
   if (!block) return;
   const content = String(block.content ?? "");
   const match = content.match(/^((\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2}))\s+(.*)$/);
   if (match) {
    const timePart = match[1];
-   await logseq.Editor.updateBlock(uuid, `${timePart} ${newName}`);
+   // Check if original had a reference
+   const oldRest = match[4];
+   const refMatch = oldRest.match(/\(\(([a-f0-9-]+)\)\)/);
+   const refStr = refMatch ? ` ((${refMatch[1]}))` : (todoUuid ? ` ((${todoUuid}))` : "");
+   await logseq.Editor.updateBlock(uuid, `${timePart} ${newName}${refStr}`);
   }
   setEditingBlockUuid(null);
   refreshTimeLog();

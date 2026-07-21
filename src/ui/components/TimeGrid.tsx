@@ -15,7 +15,7 @@ interface TimeGridProps {
  onSelectBlock: (uuid: string | null) => void;
  onDoubleClickBlock: (uuid: string) => void;
  editingBlockUuid?: string | null;
- onRenameBlock?: (uuid: string, name: string) => void;
+ onRenameBlock?: (uuid: string, name: string, todoUuid?: string) => void;
  onDeleteBlock: (uuid: string) => void;
  onDropTodo?: (uuid: string, startMinutes: number) => void;
  onDragOverGrid?: (minutes: number | null) => void;
@@ -218,6 +218,10 @@ export default function TimeGrid({
     onDragOver={(e) => {
      e.preventDefault();
      e.dataTransfer.dropEffect = "copy";
+     // Check if Shift is held for rename mode
+     if (e.shiftKey) {
+      e.dataTransfer.dropEffect = "move";
+     }
      // Hide native drag ghost — custom overlay takes over
      try {
       const blank = document.createElement("div");
@@ -271,7 +275,7 @@ export default function TimeGrid({
        if (targetBlock) {
         const blockUuid = targetBlock.getAttribute('data-block-uuid');
         if (blockUuid && data.content) {
-         onRenameBlock?.(blockUuid, data.content);
+         onRenameBlock?.(blockUuid, data.content, data.uuid);
         }
         return;
        }
