@@ -44,11 +44,12 @@ function formatHM(minutes: number): string {
  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
 
-function DragPreview({ data, overMinutes, hourHeight, entries }: {
+function DragPreview({ data, overMinutes, hourHeight, entries, dragStartMinutes }: {
  data: DragData;
  overMinutes: number | null;
  hourHeight: number;
  entries: TimeLogEntry[];
+ dragStartMinutes: number | null;
 }) {
  const entry = data.uuid ? entries.find(e => e.uuid === data.uuid) : undefined;
  const cls = entry?.isClockEntry ? "time-drag-overlay--clock"
@@ -69,7 +70,9 @@ function DragPreview({ data, overMinutes, hourHeight, entries }: {
 
  if (data.type === "create-selection" && overMinutes !== null) {
   const start = overMinutes;
-  const end = Math.min(24 * 60, start + 30);
+  const end = data.endMinutes && data.endMinutes > start + 5
+   ? data.endMinutes
+   : Math.min(24 * 60, start + 25);
   const h = Math.max(4, ((end - start) / 60) * hourHeight);
   return (
    <div className="time-drag-overlay time-drag-overlay--block time-drag-overlay--event" style={{ height: `${h}px` }}>
@@ -101,6 +104,7 @@ export default function App() {
  const [timeLogLoading, setTimeLogLoading] = useState(false);
  const [dragActiveData, setDragActiveData] = useState<DragData | null>(null);
  const [dragOverMinutes, setDragOverMinutes] = useState<number | null>(null);
+ const [dragStartMinutes, setDragStartMinutes] = useState<number | null>(null);
  const [selectedBlockUuid, setSelectedBlockUuid] = useState<string | null>(null);
  const [createModalOpen, setCreateModalOpen] = useState(false);
  const [createModalRange, setCreateModalRange] = useState<{ start: number; end: number } | null>(null);
@@ -495,7 +499,18 @@ export default function App() {
  const handleTimeLogDragStart = useCallback((event: DragStartEvent) => {
   const data = event.active.data.current as DragData | undefined;
   setDragActiveData(data ?? null);
- }, []);
+  if (data?.type === "create-selection") {
+   const scrollEl = gridScrollRef.current;
+   if (scrollEl) {
+    const gridRect = scrollEl.getBoundingClientRect();
+    const ae = event.activatorEvent;
+    if (!ae || !("clientY" in ae)) return;
+    const relativeY = (ae as PointerEvent).clientY - gridRect.top + scrollEl.scrollTop;
+    const minutes = (relativeY / timeLogHourHeight) * 60;
+    setDragStartMinutes(Math.round(minutes / 5) * 5);
+   }
+  }
+ }, [timeLogHourHeight]);
 
  const handleTimeLogDragMove = useCallback((event: DragMoveEvent) => {
   const data = event.active.data.current as DragData | undefined;
@@ -525,6 +540,7 @@ export default function App() {
   const data = active.data.current as DragData | undefined;
   setDragActiveData(null);
   setDragOverMinutes(null);
+  setDragStartMinutes(null);
   setResizeState(null);
   setMoveState(null);
   if (!data || !over) return;
@@ -562,8 +578,8 @@ export default function App() {
    }
    case "create-selection": {
     if (selectedDay === null) return;
-    const startMinutes = computeDefaultMinutes();
-    const endMinutes = Math.min(24 * 60, startMinutes + 30);
+    const startMinutes = dragOverMinutes ?? computeDefaultMinutes();
+    const endMinutes = Math.min(24 * 60, startMinutes + Math.max(15, deltaToMinutes(Math.abs(event.delta.y)) || 25));
     setCreateModalRange({ start: startMinutes, end: endMinutes });
     setCreateModalName("");
     setCreateModalOpen(true);
@@ -677,7 +693,7 @@ export default function App() {
       >
        {rightContent}
        <DragOverlay>
-        {dragActiveData && <DragPreview data={dragActiveData} overMinutes={dragOverMinutes} hourHeight={timeLogHourHeight} entries={timeLogEntries} />}
+        {dragActiveData && <DragPreview data={dragActiveData} overMinutes={dragOverMinutes} dragStartMinutes={dragStartMinutes} hourHeight={timeLogHourHeight} entries={timeLogEntries} />}
        </DragOverlay>
       </DndContext>
      } />
