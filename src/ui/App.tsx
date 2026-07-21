@@ -91,7 +91,9 @@ export default function App() {
  const [timeLogLoading, setTimeLogLoading] = useState(false);
  const [dragActiveData, setDragActiveData] = useState<DragData | null>(null);
  const [dragOverMinutes, setDragOverMinutes] = useState<number | null>(null);
+ const dragOverRef = useRef<number | null>(null);
  const [dragStartMinutes, setDragStartMinutes] = useState<number | null>(null);
+ const dragStartRef = useRef<number | null>(null);
  const [selectedBlockUuid, setSelectedBlockUuid] = useState<string | null>(null);
  const [createModalOpen, setCreateModalOpen] = useState(false);
  const [createModalRange, setCreateModalRange] = useState<{ start: number; end: number } | null>(null);
@@ -496,7 +498,9 @@ export default function App() {
     if (!ae || !("clientY" in ae)) return;
     const relativeY = (ae as PointerEvent).clientY - gridRect.top + scrollEl.scrollTop;
     const minutes = (relativeY / timeLogHourHeight) * 60;
-    setDragStartMinutes(Math.round(minutes / 5) * 5);
+    const start = Math.round(minutes / 5) * 5;
+    dragStartRef.current = start;
+    setDragStartMinutes(start);
    }
   }
  }, [timeLogHourHeight]);
@@ -514,21 +518,20 @@ export default function App() {
   const minutes = (relativeY / timeLogHourHeight) * 60;
   const snapped = Math.round(minutes / 5) * 5;
   setDragOverMinutes(Math.max(0, Math.min(23 * 60 + 55, snapped)));
+  dragOverRef.current = Math.max(0, Math.min(23 * 60 + 55, snapped));
 
   if (data.type === "time-block-top" && data.uuid) {
-   setResizeState({ uuid: data.uuid, type: "top", minutes: snapped });
+   setResizeState({ uuid: data.uuid, type: "top", minutes: dragOverRef.current ?? snapped });
   } else if (data.type === "time-block-bottom" && data.uuid) {
-   setResizeState({ uuid: data.uuid, type: "bottom", minutes: snapped });
+   setResizeState({ uuid: data.uuid, type: "bottom", minutes: dragOverRef.current ?? snapped });
   } else if (data.type === "time-block" && data.uuid && data.startMinutes !== undefined && data.endMinutes !== undefined) {
    const duration = data.endMinutes - data.startMinutes;
-   setMoveState({ uuid: data.uuid, startMinutes: Math.max(0, Math.min(23 * 60 + 55 - duration, snapped)) });
+   const ms = dragOverRef.current ?? snapped;
+   setMoveState({ uuid: data.uuid, startMinutes: Math.max(0, Math.min(23 * 60 + 55 - duration, ms)) });
   } else if (data.type === "create-selection") {
-   console.log("[time-log] create-selection dragMove", { dragOverMinutes, dragStartMinutes, snapped });
-   if (dragOverMinutes !== null) {
-    const start = dragStartMinutes ?? dragOverMinutes;
-    const end = Math.max(start + 5, snapped);
-    setCreateState({ startMinutes: start, endMinutes: end });
-   }
+   const start = dragStartRef.current ?? snapped;
+   const end = Math.max(start + 5, snapped);
+   setCreateState({ startMinutes: start, endMinutes: end });
   }
  }, [timeLogHourHeight]);
  const handleTimeLogDragEnd = useCallback(async (event: DragEndEvent) => {
@@ -536,7 +539,9 @@ export default function App() {
   const data = active.data.current as DragData | undefined;
   setDragActiveData(null);
   setDragOverMinutes(null);
+  dragOverRef.current = null;
   setDragStartMinutes(null);
+  dragStartRef.current = null;
   setResizeState(null);
   setMoveState(null);
   setCreateState(null);
@@ -572,7 +577,7 @@ export default function App() {
    }
    case "create-selection": {
     if (selectedDay === null) return;
-    const startMinutes = dragStartMinutes ?? computeDefaultMinutes();
+    const startMinutes = dragStartRef.current ?? computeDefaultMinutes();
     const endMinutes = dragOverMinutes !== null ? Math.max(startMinutes + 5, Math.min(24 * 60, dragOverMinutes)) : startMinutes + 25;
     setCreateModalRange({ start: startMinutes, end: endMinutes });
     setCreateModalName("");
