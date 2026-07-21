@@ -55,19 +55,6 @@ function DragPreview({ data, overMinutes, hourHeight, entries, dragStartMinutes 
  const cls = entry?.isClockEntry ? "time-drag-overlay--clock"
   : entry?.todoUuid ? "time-drag-overlay--task"
    : "time-drag-overlay--event";
- if (data.type === "time-block" && data.startMinutes !== undefined && data.endMinutes !== undefined) {
-  const duration = data.endMinutes - data.startMinutes;
-  const h = Math.max(4, (duration / 60) * hourHeight);
-  const displayStart = overMinutes !== null ? overMinutes : data.startMinutes;
-  const displayEnd = displayStart + duration;
-  return (
-   <div className={`time-drag-overlay time-drag-overlay--block ${cls}`} style={{ height: `${h}px` }}>
-    <span className="time-drag-overlay-time">{formatHM(displayStart)} - {formatHM(Math.min(24 * 60, displayEnd))}</span>
-    {entry?.activity && <span className="time-drag-overlay-activity">{entry.activity}</span>}
-   </div>
-  );
- }
-
  return null;
 }
 
@@ -490,6 +477,10 @@ export default function App() {
  const handleTimeLogDragStart = useCallback((event: DragStartEvent) => {
   const data = event.active.data.current as DragData | undefined;
   setDragActiveData(data ?? null);
+  // Only show DragOverlay for create-selection, not for time-block moves
+  if (data?.type !== "create-selection") {
+   setDragActiveData(null);
+  }
   if (data?.type === "create-selection") {
    console.log("[time-log] create-selection dragStart", { type: data?.type, hasActivator: !!event.activatorEvent });
    const scrollEl = gridScrollRef.current;
