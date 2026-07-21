@@ -215,6 +215,8 @@ export default function TimeGrid({
 
  const totalHeight = HOURS_PER_DAY * hourHeight;
 
+ if (createState) console.log("[time-log] CBD rendering", createState.startMinutes, createState.endMinutes);
+
  return (
   <div
    className="time-grid"
@@ -364,7 +366,6 @@ export default function TimeGrid({
       <span className="time-drag-overlay-activity">{nativeDragState.content}</span>
      </div>
     )}
-
     {createState && (
      <div className="time-block time-block--event"
       style={{
@@ -394,6 +395,6 @@ export default function TimeGrid({
     {...overlayListeners}
     {...overlayAttrs}
    />
-  </div>
+  </div >
  );
 }

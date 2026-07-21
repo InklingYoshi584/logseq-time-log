@@ -499,6 +499,7 @@ export default function App() {
     const relativeY = (ae as PointerEvent).clientY - gridRect.top + scrollEl.scrollTop;
     const minutes = (relativeY / timeLogHourHeight) * 60;
     const start = Math.round(minutes / 5) * 5;
+    console.log("[time-log] CBD dragStart position", { clientY: (ae as PointerEvent).clientY, relativeY: Math.round(relativeY), minutes: minutes.toFixed(1), start });
     dragStartRef.current = start;
     setDragStartMinutes(start);
    }
