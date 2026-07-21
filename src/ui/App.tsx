@@ -631,15 +631,24 @@ export default function App() {
   const match = content.match(/^((\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2}))\s+(.*)$/);
   if (match) {
    const timePart = match[1];
-   // Check if original had a reference
    const oldRest = match[4];
-   const refMatch = oldRest.match(/\(\(([a-f0-9-]+)\)\)/);
-   const refStr = refMatch ? ` ((${refMatch[1]}))` : (todoUuid ? ` ((${todoUuid}))` : "");
-   await logseq.Editor.updateBlock(uuid, `${timePart} ${newName}${refStr}`);
+   if (todoUuid) {
+    // Shift-drop: only update reference, keep existing activity name
+    const nameWithoutRef = oldRest.replace(/\(\([a-f0-9-]+\)\)/g, "").trim();
+    const finalName = (nameWithoutRef && nameWithoutRef !== "Name") ? nameWithoutRef : newName;
+    await logseq.Editor.updateBlock(uuid, `${timePart} ${finalName} ((${todoUuid}))`);
+    // Refresh to get updated entry with todoUuid
+    await refreshTimeLog();
+   } else {
+    // Inline rename: just update the name
+    const refMatch = oldRest.match(/\(\(([a-f0-9-]+)\)\)/);
+    const refStr = refMatch ? ` ((${refMatch[1]}))` : "";
+    await logseq.Editor.updateBlock(uuid, `${timePart} ${newName}${refStr}`);
+    updateEntryLocal(uuid, { activity: newName });
+   }
   }
-  updateEntryLocal(uuid, { activity: newName });
   setEditingBlockUuid(null);
- }, [refreshTimeLog]);
+ }, [refreshTimeLog, updateEntryLocal]);
 
  /* ── Journal (left) content ── */
  const journalContent = selectedDay !== null ? (
