@@ -9,11 +9,14 @@ interface TimeGridProps {
  entries: TimeLogEntry[];
  hourHeight: number;
  resizeState?: { uuid: string; type: "top" | "bottom"; minutes: number } | null;
+ moveState?: { uuid: string; startMinutes: number } | null;
  selectedBlockUuid: string | null;
  onSelectBlock: (uuid: string | null) => void;
  onDoubleClickBlock: (uuid: string) => void;
  onDeleteBlock: (uuid: string) => void;
  onDropTodo?: (uuid: string, startMinutes: number) => void;
+ onDragOverGrid?: (minutes: number | null) => void;
+ nativeDragState?: { uuid: string; content: string; startMinutes: number | null } | null;
 }
 
 // Width of the hour marker column — must match .time-grid-markers in App.css
@@ -22,6 +25,10 @@ const MARKER_WIDTH = 54;
 const HOURS_PER_DAY = 24;
 const MIN_BLOCK_HEIGHT = 2;
 const BLOCK_Z_INDEX = 2;
+
+function formatHM(minutes: number): string {
+ return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
 
 interface LayoutItem {
  entry: TimeLogEntry;
@@ -115,13 +122,17 @@ export default function TimeGrid({
  entries,
  hourHeight,
  resizeState,
+ moveState,
  selectedBlockUuid,
  onSelectBlock,
  onDoubleClickBlock,
  onDeleteBlock,
  onDropTodo,
+ onDragOverGrid,
+ nativeDragState,
 }: TimeGridProps) {
  const gridContainerRef = useRef<HTMLDivElement>(null);
+ const dragLeaveTimer = useRef<ReturnType<typeof setTimeout>>();
 
  // ── Droppable zone for journal-todo drops ──
  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
@@ -198,7 +209,38 @@ export default function TimeGrid({
     className={`time-grid-zone${isOver ? " time-grid-zone--over" : ""}`}
     ref={setDroppableRef}
     onClick={handleGridZoneClick}
-    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
+    onDragOver={(e) => {
+     e.preventDefault();
+     e.dataTransfer.dropEffect = "copy";
+     if (!onDragOverGrid) return;
+     // Report snapped time position to parent for overlay
+     const zoneRect = e.currentTarget.getBoundingClientRect();
+     const parentScroll = e.currentTarget.closest('.time-grid-scroll');
+     const scrollTop = parentScroll ? (parentScroll as HTMLElement).scrollTop : 0;
+     const relativeY = e.clientY - zoneRect.top + scrollTop;
+     const minutes = (relativeY / hourHeight) * 60;
+     const snapped = Math.round(minutes / 5) * 5;
+     onDragOverGrid(Math.max(0, Math.min(23 * 60 + 55, snapped)));
+     // Clear any pending onDragLeave clear
+     if (dragLeaveTimer.current) {
+      clearTimeout(dragLeaveTimer.current);
+      dragLeaveTimer.current = undefined;
+     }
+    }}
+    onDragEnter={() => {
+     // Cancel any pending onDragLeave clear when re-entering from child
+     if (dragLeaveTimer.current) {
+      clearTimeout(dragLeaveTimer.current);
+      dragLeaveTimer.current = undefined;
+     }
+    }}
+    onDragLeave={() => {
+     // Defer clearing so child-element transitions don't flicker
+     if (dragLeaveTimer.current) clearTimeout(dragLeaveTimer.current);
+     dragLeaveTimer.current = setTimeout(() => {
+      onDragOverGrid?.(null);
+     }, 0);
+    }}
     onDrop={(e) => {
      e.preventDefault();
      try {
@@ -224,6 +266,11 @@ export default function TimeGrid({
       } else {
        displayEnd = Math.min(24 * 60, Math.max(displayStart + 5, resizeState.minutes));
       }
+     }
+     if (moveState && moveState.uuid === entry.uuid) {
+      const duration = displayEnd - displayStart;
+      displayStart = moveState.startMinutes;
+      displayEnd = displayStart + duration;
      }
      const top = (displayStart / 60) * hourHeight;
      const height = Math.max(
@@ -252,6 +299,23 @@ export default function TimeGrid({
       />
      );
     })}
+
+    {nativeDragState && nativeDragState.startMinutes !== null && (
+     <div className="time-drag-overlay time-drag-overlay--block time-drag-overlay--task"
+      style={{
+       position: "absolute",
+       top: (nativeDragState.startMinutes / 60) * hourHeight,
+       height: Math.max(4, (25 / 60) * hourHeight),
+       left: 0,
+       right: 0,
+       zIndex: 100,
+       pointerEvents: "none",
+      }}
+     >
+      <span className="time-drag-overlay-time">{formatHM(nativeDragState.startMinutes)} - {formatHM(Math.min(24 * 60, nativeDragState.startMinutes + 25))}</span>
+      <span className="time-drag-overlay-activity">{nativeDragState.content}</span>
+     </div>
+    )}
    </div>
 
    <div

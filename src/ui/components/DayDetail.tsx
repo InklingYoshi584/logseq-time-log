@@ -429,6 +429,25 @@ function DraggableTodoCard({ todo, onChangeMarker, depth = 0 }: {
         onDragStart={(e) => {
           e.dataTransfer.setData("text/plain", JSON.stringify({ uuid: todo.uuid, content: todo.content }));
           e.dataTransfer.effectAllowed = "copy";
+        // Create custom drag image: blue rectangle with todo name
+        const img = document.createElement("div");
+        img.style.cssText = `
+          padding: 6px 12px;
+          background: var(--ls-accent, #60a5fa);
+          color: #fff;
+          border-radius: 4px;
+          font-size: 14px;
+          font-weight: 500;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          white-space: nowrap;
+          position: fixed;
+          top: -1000px;
+          left: -1000px;
+        `;
+        img.textContent = todo.content || "Task";
+        document.body.appendChild(img);
+        e.dataTransfer.setDragImage(img, 0, 0);
+        setTimeout(() => document.body.removeChild(img), 0);
         }}
       >
         <span className="todo-drag-handle">⋮⋮</span>

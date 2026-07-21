@@ -1,34 +1,34 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRef } from "react";
 import {
-  DndContext,
-  DragOverlay,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  pointerWithin,
+ DndContext,
+ DragOverlay,
+ PointerSensor,
+ useSensor,
+ useSensors,
+ pointerWithin,
 } from "@dnd-kit/core";
 import type { DragStartEvent, DragMoveEvent, DragEndEvent } from "@dnd-kit/core";
 import type { TodoBlock, TodoPriority } from "./types";
 import type { AppTab, TimeLogEntry, DragData } from "./types";
 import {
-  queryAllTodos,
-  queryJournalDaysWithTodos,
-  queryDayTodos,
-  groupTodos,
-  sortPageTodos,
-  moveTodoToJournal,
-  deleteJournalBlock,
-  deleteTodoWithRefs,
-  changeMarker,
-  parseLogseqDate,
-  resolveJournalPageName,
-  findOrCreateTodosBlock,
+ queryAllTodos,
+ queryJournalDaysWithTodos,
+ queryDayTodos,
+ groupTodos,
+ sortPageTodos,
+ moveTodoToJournal,
+ deleteJournalBlock,
+ deleteTodoWithRefs,
+ changeMarker,
+ parseLogseqDate,
+ resolveJournalPageName,
+ findOrCreateTodosBlock,
 } from "./logseq";
 import {
-  queryTimeLogEntries,
-  findOrCreateTimeLogBlock,
-  updateTimeLogEntry,
+ queryTimeLogEntries,
+ findOrCreateTimeLogBlock,
+ updateTimeLogEntry,
 } from "./logseq";
 import HeaderBar from "./components/HeaderBar";
 import TimeLogView from "./components/TimeLogView";
@@ -41,658 +41,691 @@ import PageDetail from "./components/PageDetail";
 const INITIAL_YEAR_WINDOW = 3;
 
 function formatHM(minutes: number): string {
-  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+ return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
 
 function DragPreview({ data, overMinutes, hourHeight, entries }: {
-  data: DragData;
-  overMinutes: number | null;
-  hourHeight: number;
-  entries: TimeLogEntry[];
+ data: DragData;
+ overMinutes: number | null;
+ hourHeight: number;
+ entries: TimeLogEntry[];
 }) {
-  const entry = data.uuid ? entries.find(e => e.uuid === data.uuid) : undefined;
-  const cls = entry?.isClockEntry ? "time-drag-overlay--clock"
-    : entry?.todoUuid ? "time-drag-overlay--task"
-      : "time-drag-overlay--event";
-  if (data.type === "time-block" && data.startMinutes !== undefined && data.endMinutes !== undefined) {
-    const duration = data.endMinutes - data.startMinutes;
-    const h = Math.max(4, (duration / 60) * hourHeight);
-    const displayStart = overMinutes !== null ? overMinutes : data.startMinutes;
-    const displayEnd = displayStart + duration;
-    return (
-      <div className={`time-drag-overlay time-drag-overlay--block ${cls}`} style={{ height: `${h}px` }}>
-        <span className="time-drag-overlay-time">{formatHM(displayStart)} - {formatHM(Math.min(24 * 60, displayEnd))}</span>
-        {entry?.activity && <span className="time-drag-overlay-activity">{entry.activity}</span>}
-      </div>
-    );
-  }
+ const entry = data.uuid ? entries.find(e => e.uuid === data.uuid) : undefined;
+ const cls = entry?.isClockEntry ? "time-drag-overlay--clock"
+  : entry?.todoUuid ? "time-drag-overlay--task"
+   : "time-drag-overlay--event";
+ if (data.type === "time-block" && data.startMinutes !== undefined && data.endMinutes !== undefined) {
+  const duration = data.endMinutes - data.startMinutes;
+  const h = Math.max(4, (duration / 60) * hourHeight);
+  const displayStart = overMinutes !== null ? overMinutes : data.startMinutes;
+  const displayEnd = displayStart + duration;
+  return (
+   <div className={`time-drag-overlay time-drag-overlay--block ${cls}`} style={{ height: `${h}px` }}>
+    <span className="time-drag-overlay-time">{formatHM(displayStart)} - {formatHM(Math.min(24 * 60, displayEnd))}</span>
+    {entry?.activity && <span className="time-drag-overlay-activity">{entry.activity}</span>}
+   </div>
+  );
+ }
 
-  return null;
+ return null;
 }
 
 export default function App() {
-  const [pageTodos, setPageTodos] = useState<TodoBlock[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+ const [pageTodos, setPageTodos] = useState<TodoBlock[]>([]);
+ const [loading, setLoading] = useState(true);
+ const [error, setError] = useState<string | null>(null);
 
-  /* ── Calendar state ── */
-  const currentYear = new Date().getFullYear();
-  const [yearRange, setYearRange] = useState({ start: currentYear, end: currentYear });
-  const [daysByYear, setDaysByYear] = useState<Map<number, Set<number>>>(new Map());
-  const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  const [dayTodos, setDayTodos] = useState<TodoBlock[]>([]);
-  const [dayLoading, setDayLoading] = useState(false);
+ /* ── Calendar state ── */
+ const currentYear = new Date().getFullYear();
+ const [yearRange, setYearRange] = useState({ start: currentYear, end: currentYear });
+ const [daysByYear, setDaysByYear] = useState<Map<number, Set<number>>>(new Map());
+ const [selectedDay, setSelectedDay] = useState<number | null>(null);
+ const [dayTodos, setDayTodos] = useState<TodoBlock[]>([]);
+ const [dayLoading, setDayLoading] = useState(false);
 
-  /* ── Misc state ── */
-  const [selectedPage, setSelectedPage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<AppTab>("tasks");
-  const [timeLogEntries, setTimeLogEntries] = useState<TimeLogEntry[]>([]);
-  const [timeLogLoading, setTimeLogLoading] = useState(false);
-  const [dragActiveData, setDragActiveData] = useState<DragData | null>(null);
-  const [dragOverMinutes, setDragOverMinutes] = useState<number | null>(null);
-  const [selectedBlockUuid, setSelectedBlockUuid] = useState<string | null>(null);
-  const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [createModalRange, setCreateModalRange] = useState<{ start: number; end: number } | null>(null);
-  const [createModalName, setCreateModalName] = useState("");
-  const [timeLogHourHeight, setTimeLogHourHeight] = useState(60);
-  const [resizeState, setResizeState] = useState<{ uuid: string; type: "top" | "bottom"; minutes: number } | null>(null);
-  const gridScrollRef = useRef<HTMLDivElement | null>(null);
+ /* ── Misc state ── */
+ const [selectedPage, setSelectedPage] = useState<string | null>(null);
+ const [activeTab, setActiveTab] = useState<AppTab>("tasks");
+ const [timeLogEntries, setTimeLogEntries] = useState<TimeLogEntry[]>([]);
+ const [timeLogLoading, setTimeLogLoading] = useState(false);
+ const [dragActiveData, setDragActiveData] = useState<DragData | null>(null);
+ const [dragOverMinutes, setDragOverMinutes] = useState<number | null>(null);
+ const [selectedBlockUuid, setSelectedBlockUuid] = useState<string | null>(null);
+ const [createModalOpen, setCreateModalOpen] = useState(false);
+ const [createModalRange, setCreateModalRange] = useState<{ start: number; end: number } | null>(null);
+ const [createModalName, setCreateModalName] = useState("");
+ const [timeLogHourHeight, setTimeLogHourHeight] = useState(60);
+ const [resizeState, setResizeState] = useState<{ uuid: string; type: "top" | "bottom"; minutes: number } | null>(null);
+ const [moveState, setMoveState] = useState<{ uuid: string; startMinutes: number } | null>(null);
+ const [nativeDragState, setNativeDragState] = useState<{ uuid: string; content: string; startMinutes: number | null } | null>(null);
+ const gridScrollRef = useRef<HTMLDivElement | null>(null);
 
-  /* ── Close / ESC ── */
-  const handleClose = useCallback(() => {
-    logseq.hideMainUI();
-  }, []);
+ /* ── Close / ESC ── */
+ const handleClose = useCallback(() => {
+  logseq.hideMainUI();
+ }, []);
 
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        if (selectedBlockUuid !== null) {
-          setSelectedBlockUuid(null);
-          return;
-        }
-        if (selectedDay !== null) {
-          setSelectedDay(null);
-        } else if (selectedPage !== null) {
-          setSelectedPage(null);
-        } else {
-          handleClose();
-        }
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleClose, selectedDay, selectedPage, selectedBlockUuid]);
-
-  const timeLogSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
-
-  /* ── Year loading ── */
-  const loadYear = useCallback(async (year: number) => {
-    const days = await queryJournalDaysWithTodos(year);
-    setDaysByYear((prev) => {
-      const next = new Map(prev);
-      next.set(year, days);
-      return next;
-    });
-  }, []);
-
-  const expandUp = useCallback(() => {
-    setYearRange((prev) => {
-      const newStart = prev.start - 1;
-      loadYear(newStart);
-      return { start: newStart, end: prev.end };
-    });
-  }, [loadYear]);
-
-  const expandDown = useCallback(() => {
-    setYearRange((prev) => {
-      const newEnd = prev.end + 1;
-      loadYear(newEnd);
-      return { start: prev.start, end: newEnd };
-    });
-  }, [loadYear]);
-
-  /* ── Initial load ── */
-  const initYears = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      await loadYear(currentYear);
-      const half = Math.floor(INITIAL_YEAR_WINDOW / 2);
-      const start = currentYear - half;
-      const end = currentYear + half;
-      setYearRange({ start, end });
-      const promises = [];
-      for (let y = start; y <= end; y++) {
-        if (y !== currentYear) promises.push(loadYear(y));
-      }
-      await Promise.all(promises);
-
-      const pageResults = await queryAllTodos();
-      const grouped = groupTodos(pageResults);
-      setPageTodos(sortPageTodos(grouped.pages));
-
-      // Auto-select today
-      if (selectedDay === null) {
-        console.log("[time-log] auto-selecting today...");
-        try {
-          const stateToday = await logseq.App.getStateFromStore("today") as unknown;
-          console.log("[time-log] state today:", stateToday);
-          const day = parseLogseqDate(stateToday);
-          if (day) {
-            console.log("[time-log] auto-selecting day:", day);
-            setSelectedDay(day);
-            setDayLoading(true);
-            const todos = await queryDayTodos(day);
-            setDayTodos(todos);
-            setDayLoading(false);
-          }
-        } catch (err) {
-          console.error("[time-log] auto-select failed:", err);
-        }
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error("Failed to load:", err);
-      setError(msg);
-    } finally {
-      setLoading(false);
+ useEffect(() => {
+  const onKeyDown = (e: KeyboardEvent) => {
+   if (e.key === "Escape") {
+    if (selectedBlockUuid !== null) {
+     setSelectedBlockUuid(null);
+     return;
     }
-  }, [currentYear, loadYear]);
-
-  useEffect(() => {
-    // eslint-disable-next-line -- initial load
-    initYears();
-  }, [initYears]);
-
-  useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect */
-    if (activeTab === "timelog") {
-      if (selectedDay !== null) {
-        setTimeLogLoading(true);
-        setSelectedBlockUuid(null);
-        queryTimeLogEntries(selectedDay).then(setTimeLogEntries).finally(() => setTimeLogLoading(false));
-      } else {
-        // Auto-select today when switching to Time Log tab with no day selected
-        const now = new Date();
-        const today = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
-        // Use handleSelectDay inline
-        setSelectedDay(today);
-        setDayLoading(true);
-        queryDayTodos(today).then(setDayTodos).catch(() => setDayTodos([])).finally(() => setDayLoading(false));
-        setTimeLogLoading(true);
-        queryTimeLogEntries(today).then(setTimeLogEntries).finally(() => setTimeLogLoading(false));
-      }
+    if (selectedDay !== null) {
+     setSelectedDay(null);
+    } else if (selectedPage !== null) {
+     setSelectedPage(null);
+    } else {
+     handleClose();
     }
-    /* eslint-enable react-hooks/set-state-in-effect */
-  }, [activeTab, selectedDay]);
+   }
+  };
+  window.addEventListener("keydown", onKeyDown);
+  return () => window.removeEventListener("keydown", onKeyDown);
+ }, [handleClose, selectedDay, selectedPage, selectedBlockUuid]);
 
-  /* ── Day selection ── */
-  const handleSelectDay = useCallback(async (day: number) => {
-    setSelectedDay(day);
-    setDayLoading(true);
+ const timeLogSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+ /* ── Year loading ── */
+ const loadYear = useCallback(async (year: number) => {
+  const days = await queryJournalDaysWithTodos(year);
+  setDaysByYear((prev) => {
+   const next = new Map(prev);
+   next.set(year, days);
+   return next;
+  });
+ }, []);
+
+ const expandUp = useCallback(() => {
+  setYearRange((prev) => {
+   const newStart = prev.start - 1;
+   loadYear(newStart);
+   return { start: newStart, end: prev.end };
+  });
+ }, [loadYear]);
+
+ const expandDown = useCallback(() => {
+  setYearRange((prev) => {
+   const newEnd = prev.end + 1;
+   loadYear(newEnd);
+   return { start: prev.start, end: newEnd };
+  });
+ }, [loadYear]);
+
+ /* ── Initial load ── */
+ const initYears = useCallback(async () => {
+  setLoading(true);
+  setError(null);
+  try {
+   await loadYear(currentYear);
+   const half = Math.floor(INITIAL_YEAR_WINDOW / 2);
+   const start = currentYear - half;
+   const end = currentYear + half;
+   setYearRange({ start, end });
+   const promises = [];
+   for (let y = start; y <= end; y++) {
+    if (y !== currentYear) promises.push(loadYear(y));
+   }
+   await Promise.all(promises);
+
+   const pageResults = await queryAllTodos();
+   const grouped = groupTodos(pageResults);
+   setPageTodos(sortPageTodos(grouped.pages));
+
+   // Auto-select today
+   if (selectedDay === null) {
+    console.log("[time-log] auto-selecting today...");
     try {
+     const stateToday = await logseq.App.getStateFromStore("today") as unknown;
+     console.log("[time-log] state today:", stateToday);
+     const day = parseLogseqDate(stateToday);
+     if (day) {
+      console.log("[time-log] auto-selecting day:", day);
+      setSelectedDay(day);
+      setDayLoading(true);
       const todos = await queryDayTodos(day);
       setDayTodos(todos);
-    } catch (err) {
-      console.error("Failed to query day TODOs:", err);
-      setDayTodos([]);
-    } finally {
       setDayLoading(false);
-    }
-  }, []);
-
-  const handleBackToCalendar = useCallback(() => {
-    setSelectedDay(null);
-    setDayTodos([]);
-  }, []);
-
-  /* ── Misc page navigation ── */
-  const handleSelectPage = useCallback((pageName: string) => {
-    setSelectedPage(pageName);
-  }, []);
-
-  const handleBackToPages = useCallback(() => {
-    setSelectedPage(null);
-  }, []);
-
-  /* ── Drag to journal ── */
-  const handleDropOnJournal = useCallback(
-    async (blockUuid: string) => {
-      try {
-        const journalDay = await moveTodoToJournal(blockUuid, selectedDay ?? undefined);
-        setDaysByYear((prev) => {
-          const next = new Map(prev);
-          const year = Math.floor(journalDay / 10000);
-          const days = new Set(next.get(year) ?? []);
-          days.add(journalDay);
-          next.set(year, days);
-          return next;
-        });
-        if (selectedDay !== null) {
-          const todos = await queryDayTodos(journalDay);
-          setDayTodos(todos);
-        }
-      } catch (err) {
-        console.error("Failed to move TODO to journal:", err);
-      }
-    },
-    [selectedDay]
-  );
-
-  const handleJournalDelete = useCallback(async (blockUuid: string) => {
-    try {
-      await deleteJournalBlock(blockUuid);
-      if (selectedDay !== null) {
-        const todos = await queryDayTodos(selectedDay);
-        setDayTodos(todos);
-      }
+     }
     } catch (err) {
-      console.error("Failed to delete journal block:", err);
+     console.error("[time-log] auto-select failed:", err);
     }
-  }, [selectedDay]);
+   }
+  } catch (err) {
+   const msg = err instanceof Error ? err.message : String(err);
+   console.error("Failed to load:", err);
+   setError(msg);
+  } finally {
+   setLoading(false);
+  }
+ }, [currentYear, loadYear]);
 
-  const handleEdit = useCallback(async (blockUuid: string, newContent: string) => {
-    try {
-      const block = await logseq.Editor.getBlock(blockUuid);
-      if (!block?.content) return;
-      // Reconstruct full content: preserve marker + priority, replace body
-      const raw = block.content as string;
-      const markerMatch = raw.match(/^(TODO|DOING|DONE|NOW|LATER|WAITING)\s+/i);
-      const priorityMatch = raw.match(/\[#(A|B|C)\]\s*/);
-      let prefix = "";
-      if (markerMatch) prefix += markerMatch[0];
-      if (priorityMatch) prefix += priorityMatch[0];
-      await logseq.Editor.updateBlock(blockUuid, prefix + newContent);
-      if (selectedDay !== null) {
-        const todos = await queryDayTodos(selectedDay);
-        setDayTodos(todos);
-      }
-    } catch (err) {
-      console.error("Failed to edit block:", err);
+ useEffect(() => {
+  // eslint-disable-next-line -- initial load
+  initYears();
+ }, [initYears]);
+
+ useEffect(() => {
+  /* eslint-disable react-hooks/set-state-in-effect */
+  if (activeTab === "timelog") {
+   if (selectedDay !== null) {
+    setTimeLogLoading(true);
+    setSelectedBlockUuid(null);
+    queryTimeLogEntries(selectedDay).then(setTimeLogEntries).finally(() => setTimeLogLoading(false));
+   } else {
+    // Auto-select today when switching to Time Log tab with no day selected
+    const now = new Date();
+    const today = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
+    // Use handleSelectDay inline
+    setSelectedDay(today);
+    setDayLoading(true);
+    queryDayTodos(today).then(setDayTodos).catch(() => setDayTodos([])).finally(() => setDayLoading(false));
+    setTimeLogLoading(true);
+    queryTimeLogEntries(today).then(setTimeLogEntries).finally(() => setTimeLogLoading(false));
+   }
+  }
+  /* eslint-enable react-hooks/set-state-in-effect */
+ }, [activeTab, selectedDay]);
+
+ /* ── Day selection ── */
+ const handleSelectDay = useCallback(async (day: number) => {
+  setSelectedDay(day);
+  setDayLoading(true);
+  try {
+   const todos = await queryDayTodos(day);
+   setDayTodos(todos);
+  } catch (err) {
+   console.error("Failed to query day TODOs:", err);
+   setDayTodos([]);
+  } finally {
+   setDayLoading(false);
+  }
+ }, []);
+
+ const handleBackToCalendar = useCallback(() => {
+  setSelectedDay(null);
+  setDayTodos([]);
+ }, []);
+
+ /* ── Misc page navigation ── */
+ const handleSelectPage = useCallback((pageName: string) => {
+  setSelectedPage(pageName);
+ }, []);
+
+ const handleBackToPages = useCallback(() => {
+  setSelectedPage(null);
+ }, []);
+
+ /* ── Drag to journal ── */
+ const handleDropOnJournal = useCallback(
+  async (blockUuid: string) => {
+   try {
+    const journalDay = await moveTodoToJournal(blockUuid, selectedDay ?? undefined);
+    setDaysByYear((prev) => {
+     const next = new Map(prev);
+     const year = Math.floor(journalDay / 10000);
+     const days = new Set(next.get(year) ?? []);
+     days.add(journalDay);
+     next.set(year, days);
+     return next;
+    });
+    if (selectedDay !== null) {
+     const todos = await queryDayTodos(journalDay);
+     setDayTodos(todos);
     }
-  }, [selectedDay]);
+   } catch (err) {
+    console.error("Failed to move TODO to journal:", err);
+   }
+  },
+  [selectedDay]
+ );
 
-  const handleReorder = useCallback(async (activeUuid: string, overUuid: string) => {
-    console.log("[time-log] handleReorder:", activeUuid, overUuid);
-    try {
-      await logseq.Editor.moveBlock(activeUuid, overUuid, { before: false });
-      console.log("[time-log] moveBlock done");
-      // Swap locally to avoid losing manual order from re-query sort
-      setDayTodos((prev) => {
-        const idx1 = prev.findIndex((t) => t.uuid === activeUuid);
-        const idx2 = prev.findIndex((t) => t.uuid === overUuid);
-        if (idx1 === -1 || idx2 === -1) return prev;
-        const next = [...prev];
-        const [item] = next.splice(idx1, 1);
-        next.splice(idx2, 0, item);
-        return next;
-      });
-    } catch (err) {
-      console.error("Failed to reorder:", err);
+ const handleJournalDelete = useCallback(async (blockUuid: string) => {
+  try {
+   await deleteJournalBlock(blockUuid);
+   if (selectedDay !== null) {
+    const todos = await queryDayTodos(selectedDay);
+    setDayTodos(todos);
+   }
+  } catch (err) {
+   console.error("Failed to delete journal block:", err);
+  }
+ }, [selectedDay]);
+
+ const handleEdit = useCallback(async (blockUuid: string, newContent: string) => {
+  try {
+   const block = await logseq.Editor.getBlock(blockUuid);
+   if (!block?.content) return;
+   // Reconstruct full content: preserve marker + priority, replace body
+   const raw = block.content as string;
+   const markerMatch = raw.match(/^(TODO|DOING|DONE|NOW|LATER|WAITING)\s+/i);
+   const priorityMatch = raw.match(/\[#(A|B|C)\]\s*/);
+   let prefix = "";
+   if (markerMatch) prefix += markerMatch[0];
+   if (priorityMatch) prefix += priorityMatch[0];
+   await logseq.Editor.updateBlock(blockUuid, prefix + newContent);
+   if (selectedDay !== null) {
+    const todos = await queryDayTodos(selectedDay);
+    setDayTodos(todos);
+   }
+  } catch (err) {
+   console.error("Failed to edit block:", err);
+  }
+ }, [selectedDay]);
+
+ const handleReorder = useCallback(async (activeUuid: string, overUuid: string) => {
+  console.log("[time-log] handleReorder:", activeUuid, overUuid);
+  try {
+   await logseq.Editor.moveBlock(activeUuid, overUuid, { before: false });
+   console.log("[time-log] moveBlock done");
+   // Swap locally to avoid losing manual order from re-query sort
+   setDayTodos((prev) => {
+    const idx1 = prev.findIndex((t) => t.uuid === activeUuid);
+    const idx2 = prev.findIndex((t) => t.uuid === overUuid);
+    if (idx1 === -1 || idx2 === -1) return prev;
+    const next = [...prev];
+    const [item] = next.splice(idx1, 1);
+    next.splice(idx2, 0, item);
+    return next;
+   });
+  } catch (err) {
+   console.error("Failed to reorder:", err);
+  }
+ }, [selectedDay]);
+
+ const handleChangePriority = useCallback(async (blockUuid: string, priority: TodoPriority | null) => {
+  try {
+   const block = await logseq.Editor.getBlock(blockUuid);
+   let targetUuid = blockUuid;
+   let rawContent = block?.content;
+   // Resolve reference blocks
+   if (rawContent && typeof rawContent === "string") {
+    const refMatch = rawContent.match(/\(\(([a-f0-9-]+)\)\)/);
+    if (refMatch) {
+     targetUuid = refMatch[1];
+     const refBlock = await logseq.Editor.getBlock(refMatch[1]);
+     rawContent = refBlock?.content;
     }
-  }, [selectedDay]);
+   }
+   if (!rawContent || typeof rawContent !== "string") return;
+   console.log("[time-log] changePriority:", { blockUuid, targetUuid, priority, rawContent });
+   // Replace or add priority tag, preserve the rest
+   let body = rawContent.replace(/\[#(A|B|C)\]\s*/g, "").trim();
+   if (priority) {
+    body = body.replace(/^(TODO|DOING|DONE|NOW|LATER|WAITING)\s+/, `$1 [#${priority}] `);
+    if (!body.includes("[#")) body = `[#${priority}] ${body}`;
+   }
+   console.log("[time-log] changePriority new content:", body);
+   await logseq.Editor.updateBlock(targetUuid, body);
+   if (selectedDay !== null) {
+    const todos = await queryDayTodos(selectedDay);
+    setDayTodos(todos);
+   }
+  } catch (err) {
+   console.error("Failed to change priority:", err);
+  }
+ }, [selectedDay]);
 
-  const handleChangePriority = useCallback(async (blockUuid: string, priority: TodoPriority | null) => {
-    try {
-      const block = await logseq.Editor.getBlock(blockUuid);
-      let targetUuid = blockUuid;
-      let rawContent = block?.content;
-      // Resolve reference blocks
-      if (rawContent && typeof rawContent === "string") {
-        const refMatch = rawContent.match(/\(\(([a-f0-9-]+)\)\)/);
-        if (refMatch) {
-          targetUuid = refMatch[1];
-          const refBlock = await logseq.Editor.getBlock(refMatch[1]);
-          rawContent = refBlock?.content;
-        }
-      }
-      if (!rawContent || typeof rawContent !== "string") return;
-      console.log("[time-log] changePriority:", { blockUuid, targetUuid, priority, rawContent });
-      // Replace or add priority tag, preserve the rest
-      let body = rawContent.replace(/\[#(A|B|C)\]\s*/g, "").trim();
-      if (priority) {
-        body = body.replace(/^(TODO|DOING|DONE|NOW|LATER|WAITING)\s+/, `$1 [#${priority}] `);
-        if (!body.includes("[#")) body = `[#${priority}] ${body}`;
-      }
-      console.log("[time-log] changePriority new content:", body);
-      await logseq.Editor.updateBlock(targetUuid, body);
-      if (selectedDay !== null) {
-        const todos = await queryDayTodos(selectedDay);
-        setDayTodos(todos);
-      }
-    } catch (err) {
-      console.error("Failed to change priority:", err);
+ const handleAddTodo = useCallback(async (text: string, priority: string) => {
+  if (selectedDay === null) return;
+  try {
+   const pageName = await resolveJournalPageName(selectedDay)
+    ?? `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`;
+   await logseq.Editor.createPage(pageName, {}, { journal: true, createFirstBlock: false });
+   const prefix = priority ? `[#${priority}] ` : "";
+   const content = `${prefix}TODO ${text}`;
+   const todosBlockUuid = await findOrCreateTodosBlock(pageName);
+   await logseq.Editor.insertBlock(todosBlockUuid, content, { sibling: false });
+   const todos = await queryDayTodos(selectedDay);
+   setDayTodos(todos);
+  } catch (err) {
+   console.error("Failed to add TODO:", err);
+  }
+ }, [selectedDay]);
+
+ const handlePageDelete = useCallback(async (blockUuid: string) => {
+  try {
+   await deleteTodoWithRefs(blockUuid);
+   const pageResults = await queryAllTodos();
+   const grouped = groupTodos(pageResults);
+   setPageTodos(sortPageTodos(grouped.pages));
+  } catch (err) {
+   console.error("Failed to delete TODO:", err);
+  }
+ }, []);
+
+ const handleChangeMarker = useCallback(async (blockUuid: string, marker: string) => {
+  try {
+   await changeMarker(blockUuid, marker);
+   if (selectedDay !== null) {
+    const todos = await queryDayTodos(selectedDay);
+    setDayTodos(todos);
+   }
+   const pageResults = await queryAllTodos();
+   const grouped = groupTodos(pageResults);
+   setPageTodos(sortPageTodos(grouped.pages));
+  } catch (err) {
+   console.error("Failed to change marker:", err);
+  }
+ }, [selectedDay]);
+
+ /* ── Time Log DnD ── */
+ // Track native drag from journal to show overlay in time grid
+ useEffect(() => {
+  const onDragStart = (e: DragEvent) => {
+   try {
+    const data = JSON.parse(e.dataTransfer?.getData("text/plain") || "{}");
+    if (data.uuid && data.content) {
+     setNativeDragState({ uuid: data.uuid, content: data.content, startMinutes: null });
     }
-  }, [selectedDay]);
+   } catch { /* ignore non-our drags */ }
+  };
+  const onDragEnd = () => setNativeDragState(null);
+  window.addEventListener("dragstart", onDragStart);
+  window.addEventListener("dragend", onDragEnd);
+  return () => {
+   window.removeEventListener("dragstart", onDragStart);
+   window.removeEventListener("dragend", onDragEnd);
+  };
+ }, []);
 
-  const handleAddTodo = useCallback(async (text: string, priority: string) => {
+ const handleDragOverGrid = useCallback((minutes: number | null) => {
+  setNativeDragState(prev => prev ? { ...prev, startMinutes: minutes } : null);
+ }, []);
+
+ function deltaToMinutes(deltaY: number): number {
+  return Math.round((deltaY / timeLogHourHeight) * 60 / 5) * 5;
+ }
+
+ const computeDefaultMinutes = useCallback((): number => {
+  const now = new Date();
+  const mins = now.getHours() * 60 + now.getMinutes();
+  return Math.round(mins / 5) * 5;
+ }, []);
+
+ /* ── Time Log persistence ── */
+ const refreshTimeLog = useCallback(async () => {
+  if (selectedDay === null) return;
+  const entries = await queryTimeLogEntries(selectedDay);
+  setTimeLogEntries(entries);
+ }, [selectedDay]);
+
+ const createTimeLogEntryLoc = useCallback(async (todoUuid: string, startMinutes: number, endMinutes: number) => {
+  if (selectedDay === null) return;
+  const pageName = await resolveJournalPageName(selectedDay)
+   ?? `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`;
+  const blockUuid = await findOrCreateTimeLogBlock(pageName);
+  await logseq.Editor.insertBlock(blockUuid, `${formatHM(startMinutes)} - ${formatHM(endMinutes)} ((${todoUuid}))`, { sibling: false });
+  refreshTimeLog();
+ }, [selectedDay, refreshTimeLog]);
+
+ const createNonTaskEntry = useCallback(async (startMinutes: number, endMinutes: number, activity: string) => {
+  if (selectedDay === null) return;
+  const pageName = await resolveJournalPageName(selectedDay)
+   ?? `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`;
+  const blockUuid = await findOrCreateTimeLogBlock(pageName);
+  await logseq.Editor.insertBlock(blockUuid, `${formatHM(startMinutes)} - ${formatHM(endMinutes)} ${activity}`, { sibling: false });
+  refreshTimeLog();
+ }, [selectedDay, refreshTimeLog]);
+
+ const deleteTimeLogEntry = useCallback(async (uuid: string) => {
+  await logseq.Editor.removeBlock(uuid);
+  setSelectedBlockUuid(null);
+  refreshTimeLog();
+ }, [selectedDay, refreshTimeLog]);
+
+ const handleDropOnTimeLog = useCallback(async (uuid: string, startMinutes: number) => {
+  const endMinutes = Math.min(24 * 60, startMinutes + 25);
+  await createTimeLogEntryLoc(uuid, startMinutes, endMinutes);
+  setNativeDragState(null);
+ }, [createTimeLogEntryLoc]);
+
+ const handleTimeLogDragStart = useCallback((event: DragStartEvent) => {
+  const data = event.active.data.current as DragData | undefined;
+  setDragActiveData(data ?? null);
+ }, []);
+
+ const handleTimeLogDragMove = useCallback((event: DragMoveEvent) => {
+  const data = event.active.data.current as DragData | undefined;
+  if (!data) return;
+  const scrollEl = gridScrollRef.current;
+  if (!scrollEl || !event.active.rect.current.translated) return;
+
+  const gridRect = scrollEl.getBoundingClientRect();
+  const translated = event.active.rect.current.translated;
+  const pointerY = translated.top + translated.height / 2;
+  const relativeY = pointerY - gridRect.top + scrollEl.scrollTop;
+  const minutes = (relativeY / timeLogHourHeight) * 60;
+  const snapped = Math.round(minutes / 5) * 5;
+  setDragOverMinutes(Math.max(0, Math.min(23 * 60 + 55, snapped)));
+
+  if (data.type === "time-block-top" && data.uuid) {
+   setResizeState({ uuid: data.uuid, type: "top", minutes: snapped });
+  } else if (data.type === "time-block-bottom" && data.uuid) {
+   setResizeState({ uuid: data.uuid, type: "bottom", minutes: snapped });
+  } else if (data.type === "time-block" && data.uuid && data.startMinutes !== undefined && data.endMinutes !== undefined) {
+   const duration = data.endMinutes - data.startMinutes;
+   setMoveState({ uuid: data.uuid, startMinutes: Math.max(0, Math.min(23 * 60 + 55 - duration, snapped)) });
+  }
+ }, [timeLogHourHeight]);
+ const handleTimeLogDragEnd = useCallback(async (event: DragEndEvent) => {
+  const { active, over } = event;
+  const data = active.data.current as DragData | undefined;
+  setDragActiveData(null);
+  setDragOverMinutes(null);
+  setResizeState(null);
+  setMoveState(null);
+  if (!data || !over) return;
+
+  const overId = String(over.id);
+
+  switch (data.type) {
+   case "time-block": {
+    if (!data.uuid || data.startMinutes === undefined || data.endMinutes === undefined) return;
+    const duration = data.endMinutes - data.startMinutes;
+    const deltaMinutes = deltaToMinutes(event.delta.y);
+    const newStart = Math.max(0, Math.min(23 * 60 + 59 - duration, data.startMinutes + deltaMinutes));
+    const newEnd = newStart + duration;
+    await updateTimeLogEntry(data.uuid, newStart, newEnd);
+    refreshTimeLog();
+    break;
+   }
+   case "time-block-top": {
+    if (!data.uuid || data.endMinutes === undefined) return;
+    const deltaMinutes = deltaToMinutes(event.delta.y);
+    const newStart = Math.max(0, Math.min(data.endMinutes - 5, (data.startMinutes ?? 0) + deltaMinutes));
+    if (newStart >= data.endMinutes - 5) return;
+    await updateTimeLogEntry(data.uuid, newStart, data.endMinutes);
+    refreshTimeLog();
+    break;
+   }
+   case "time-block-bottom": {
+    if (!data.uuid || data.startMinutes === undefined) return;
+    const deltaMinutes = deltaToMinutes(event.delta.y);
+    const newEnd = Math.max(data.startMinutes + 5, Math.min(24 * 60, (data.endMinutes ?? data.startMinutes + 30) + deltaMinutes));
+    if (newEnd <= data.startMinutes + 5) return;
+    await updateTimeLogEntry(data.uuid, data.startMinutes, newEnd);
+    refreshTimeLog();
+    break;
+   }
+   case "create-selection": {
     if (selectedDay === null) return;
+    const startMinutes = computeDefaultMinutes();
+    const endMinutes = Math.min(24 * 60, startMinutes + 30);
+    setCreateModalRange({ start: startMinutes, end: endMinutes });
+    setCreateModalName("");
+    setCreateModalOpen(true);
+    break;
+   }
+  }
+ }, [selectedDay]);
+
+ const handleDoubleClickBlock = useCallback((uuid: string) => {
+  const entry = timeLogEntries.find(e => e.uuid === uuid);
+  if (entry?.todoUuid) {
+   logseq.Editor.scrollToBlockInPage("", entry.todoUuid);
+  }
+ }, [timeLogEntries]);
+
+ /* ── Journal (left) content ── */
+ const journalContent = selectedDay !== null ? (
+  <div
+   className="journal-drop-zone"
+   style={dragActiveData ? { overflow: 'hidden' } : undefined}
+   onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
+   onDrop={(e) => {
+    e.preventDefault();
     try {
-      const pageName = await resolveJournalPageName(selectedDay)
-        ?? `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`;
-      await logseq.Editor.createPage(pageName, {}, { journal: true, createFirstBlock: false });
-      const prefix = priority ? `[#${priority}] ` : "";
-      const content = `${prefix}TODO ${text}`;
-      const todosBlockUuid = await findOrCreateTodosBlock(pageName);
-      await logseq.Editor.insertBlock(todosBlockUuid, content, { sibling: false });
+     const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+     if (data.uuid) handleDropOnJournal(data.uuid);
+    } catch {
+     const uuid = e.dataTransfer.getData("text/plain");
+     if (uuid) handleDropOnJournal(uuid);
+    }
+   }}
+  >
+   <DayDetail
+    readOnly={activeTab === "timelog"}
+    journalDay={selectedDay}
+    pageName={
+     `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`
+    }
+    todos={dayTodos}
+    loading={dayLoading}
+    onBack={handleBackToCalendar}
+    onDelete={handleJournalDelete}
+    onChangeMarker={handleChangeMarker}
+    onAddTodo={handleAddTodo}
+    onRefresh={async () => {
+     if (selectedDay !== null) {
       const todos = await queryDayTodos(selectedDay);
       setDayTodos(todos);
-    } catch (err) {
-      console.error("Failed to add TODO:", err);
-    }
-  }, [selectedDay]);
-
-  const handlePageDelete = useCallback(async (blockUuid: string) => {
+     }
+    }}
+    onEdit={handleEdit}
+    onReorder={handleReorder}
+    onChangePriority={handleChangePriority}
+   />
+  </div>
+ ) : (
+  <div
+   className="journal-drop-zone"
+   style={dragActiveData ? { overflow: 'hidden' } : undefined}
+   onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
+   onDrop={(e) => {
+    e.preventDefault();
     try {
-      await deleteTodoWithRefs(blockUuid);
-      const pageResults = await queryAllTodos();
-      const grouped = groupTodos(pageResults);
-      setPageTodos(sortPageTodos(grouped.pages));
-    } catch (err) {
-      console.error("Failed to delete TODO:", err);
+     const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+     if (data.uuid) handleDropOnJournal(data.uuid);
+    } catch {
+     const uuid = e.dataTransfer.getData("text/plain");
+     if (uuid) handleDropOnJournal(uuid);
     }
-  }, []);
+   }}
+  >
+   <CalendarView
+    yearRange={yearRange}
+    daysByYear={daysByYear}
+    onSelectDay={handleSelectDay}
+    onExpandUp={expandUp}
+    onExpandDown={expandDown}
+   />
+  </div>
+ );
 
-  const handleChangeMarker = useCallback(async (blockUuid: string, marker: string) => {
-    try {
-      await changeMarker(blockUuid, marker);
-      if (selectedDay !== null) {
-        const todos = await queryDayTodos(selectedDay);
-        setDayTodos(todos);
-      }
-      const pageResults = await queryAllTodos();
-      const grouped = groupTodos(pageResults);
-      setPageTodos(sortPageTodos(grouped.pages));
-    } catch (err) {
-      console.error("Failed to change marker:", err);
-    }
-  }, [selectedDay]);
-
-  /* ── Time Log DnD ── */
-  function deltaToMinutes(deltaY: number): number {
-    return Math.round((deltaY / timeLogHourHeight) * 60 / 5) * 5;
-  }
-
-  const computeDefaultMinutes = useCallback((): number => {
-    const now = new Date();
-    const mins = now.getHours() * 60 + now.getMinutes();
-    return Math.round(mins / 5) * 5;
-  }, []);
-
-  /* ── Time Log persistence ── */
-  const refreshTimeLog = useCallback(async () => {
-    if (selectedDay === null) return;
-    const entries = await queryTimeLogEntries(selectedDay);
-    setTimeLogEntries(entries);
-  }, [selectedDay]);
-
-  const createTimeLogEntryLoc = useCallback(async (todoUuid: string, startMinutes: number, endMinutes: number) => {
-    if (selectedDay === null) return;
-    const pageName = await resolveJournalPageName(selectedDay)
-      ?? `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`;
-    const blockUuid = await findOrCreateTimeLogBlock(pageName);
-    await logseq.Editor.insertBlock(blockUuid, `${formatHM(startMinutes)} - ${formatHM(endMinutes)} ((${todoUuid}))`, { sibling: false });
-    refreshTimeLog();
-  }, [selectedDay, refreshTimeLog]);
-
-  const createNonTaskEntry = useCallback(async (startMinutes: number, endMinutes: number, activity: string) => {
-    if (selectedDay === null) return;
-    const pageName = await resolveJournalPageName(selectedDay)
-      ?? `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`;
-    const blockUuid = await findOrCreateTimeLogBlock(pageName);
-    await logseq.Editor.insertBlock(blockUuid, `${formatHM(startMinutes)} - ${formatHM(endMinutes)} ${activity}`, { sibling: false });
-    refreshTimeLog();
-  }, [selectedDay, refreshTimeLog]);
-
-  const deleteTimeLogEntry = useCallback(async (uuid: string) => {
-    await logseq.Editor.removeBlock(uuid);
-    setSelectedBlockUuid(null);
-    refreshTimeLog();
-  }, [selectedDay, refreshTimeLog]);
-
-  const handleDropOnTimeLog = useCallback(async (uuid: string, startMinutes: number) => {
-    const endMinutes = Math.min(24 * 60, startMinutes + 25);
-    await createTimeLogEntryLoc(uuid, startMinutes, endMinutes);
-  }, [createTimeLogEntryLoc]);
-
-  const handleTimeLogDragStart = useCallback((event: DragStartEvent) => {
-    const data = event.active.data.current as DragData | undefined;
-    setDragActiveData(data ?? null);
-  }, []);
-
-  const handleTimeLogDragMove = useCallback((event: DragMoveEvent) => {
-    const data = event.active.data.current as DragData | undefined;
-    if (!data) return;
-    const scrollEl = gridScrollRef.current;
-    if (!scrollEl || !event.active.rect.current.translated) return;
-
-    const gridRect = scrollEl.getBoundingClientRect();
-    const translated = event.active.rect.current.translated;
-    const pointerY = translated.top + translated.height / 2;
-    const relativeY = pointerY - gridRect.top + scrollEl.scrollTop;
-    const minutes = (relativeY / timeLogHourHeight) * 60;
-    const snapped = Math.round(minutes / 5) * 5;
-    setDragOverMinutes(Math.max(0, Math.min(23 * 60 + 55, snapped)));
-
-    if (data.type === "time-block-top" && data.uuid) {
-      setResizeState({ uuid: data.uuid, type: "top", minutes: snapped });
-    } else if (data.type === "time-block-bottom" && data.uuid) {
-      setResizeState({ uuid: data.uuid, type: "bottom", minutes: snapped });
-    }
-  }, [timeLogHourHeight]);
-  const handleTimeLogDragEnd = useCallback(async (event: DragEndEvent) => {
-    const { active, over } = event;
-    const data = active.data.current as DragData | undefined;
-    setDragActiveData(null);
-    setDragOverMinutes(null);
-    setResizeState(null);
-    if (!data || !over) return;
-
-    const overId = String(over.id);
-
-    switch (data.type) {
-      case "time-block": {
-        if (!data.uuid || data.startMinutes === undefined || data.endMinutes === undefined) return;
-        const duration = data.endMinutes - data.startMinutes;
-        const deltaMinutes = deltaToMinutes(event.delta.y);
-        const newStart = Math.max(0, Math.min(23 * 60 + 59 - duration, data.startMinutes + deltaMinutes));
-        const newEnd = newStart + duration;
-        await updateTimeLogEntry(data.uuid, newStart, newEnd);
-        refreshTimeLog();
-        break;
-      }
-      case "time-block-top": {
-        if (!data.uuid || data.endMinutes === undefined) return;
-        const deltaMinutes = deltaToMinutes(event.delta.y);
-        const newStart = Math.max(0, Math.min(data.endMinutes - 5, (data.startMinutes ?? 0) + deltaMinutes));
-        if (newStart >= data.endMinutes - 5) return;
-        await updateTimeLogEntry(data.uuid, newStart, data.endMinutes);
-        refreshTimeLog();
-        break;
-      }
-      case "time-block-bottom": {
-        if (!data.uuid || data.startMinutes === undefined) return;
-        const deltaMinutes = deltaToMinutes(event.delta.y);
-        const newEnd = Math.max(data.startMinutes + 5, Math.min(24 * 60, (data.endMinutes ?? data.startMinutes + 30) + deltaMinutes));
-        if (newEnd <= data.startMinutes + 5) return;
-        await updateTimeLogEntry(data.uuid, data.startMinutes, newEnd);
-        refreshTimeLog();
-        break;
-      }
-      case "create-selection": {
-        if (selectedDay === null) return;
-        const startMinutes = computeDefaultMinutes();
-        const endMinutes = Math.min(24 * 60, startMinutes + 30);
-        setCreateModalRange({ start: startMinutes, end: endMinutes });
-        setCreateModalName("");
-        setCreateModalOpen(true);
-        break;
-      }
-    }
-  }, [selectedDay]);
-
-  const handleDoubleClickBlock = useCallback((uuid: string) => {
-    const entry = timeLogEntries.find(e => e.uuid === uuid);
-    if (entry?.todoUuid) {
-      logseq.Editor.scrollToBlockInPage("", entry.todoUuid);
-    }
-  }, [timeLogEntries]);
-
-  /* ── Journal (left) content ── */
-  const journalContent = selectedDay !== null ? (
-    <div
-      className="journal-drop-zone"
-      style={dragActiveData ? { overflow: 'hidden' } : undefined}
-      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
-      onDrop={(e) => {
-        e.preventDefault();
-        try {
-          const data = JSON.parse(e.dataTransfer.getData("text/plain"));
-          if (data.uuid) handleDropOnJournal(data.uuid);
-        } catch {
-          const uuid = e.dataTransfer.getData("text/plain");
-          if (uuid) handleDropOnJournal(uuid);
-        }
-      }}
-    >
-      <DayDetail
-        readOnly={activeTab === "timelog"}
-        journalDay={selectedDay}
-        pageName={
-          `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`
-        }
-        todos={dayTodos}
-        loading={dayLoading}
-        onBack={handleBackToCalendar}
-        onDelete={handleJournalDelete}
-        onChangeMarker={handleChangeMarker}
-        onAddTodo={handleAddTodo}
-        onRefresh={async () => {
-          if (selectedDay !== null) {
-            const todos = await queryDayTodos(selectedDay);
-            setDayTodos(todos);
-          }
-        }}
-        onEdit={handleEdit}
-        onReorder={handleReorder}
-        onChangePriority={handleChangePriority}
-      />
-    </div>
+ /* ── Misc (right) content ── */
+ const rightContent = activeTab === "tasks" ? (
+  selectedPage !== null ? (
+   <PageDetail pageName={selectedPage} onBack={handleBackToPages} onChangeMarker={handleChangeMarker} />
   ) : (
-    <div
-      className="journal-drop-zone"
-      style={dragActiveData ? { overflow: 'hidden' } : undefined}
-      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
-      onDrop={(e) => {
-        e.preventDefault();
-        try {
-          const data = JSON.parse(e.dataTransfer.getData("text/plain"));
-          if (data.uuid) handleDropOnJournal(data.uuid);
-        } catch {
-          const uuid = e.dataTransfer.getData("text/plain");
-          if (uuid) handleDropOnJournal(uuid);
-        }
-      }}
-    >
-      <CalendarView
-        yearRange={yearRange}
-        daysByYear={daysByYear}
-        onSelectDay={handleSelectDay}
-        onExpandUp={expandUp}
-        onExpandDown={expandDown}
-      />
-    </div>
-  );
+   <PageTodos
+    todos={pageTodos}
+    loading={loading}
+    error={error}
+    onDelete={handlePageDelete}
+    onSelectPage={handleSelectPage}
+    onChangeMarker={handleChangeMarker}
+   />
+  )
+ ) : (
+  <TimeLogView
+   journalDay={selectedDay ?? Math.floor(new Date().getFullYear() * 10000 + (new Date().getMonth() + 1) * 100 + new Date().getDate())}
+   gridRef={gridScrollRef}
+   hourHeight={timeLogHourHeight}
+   onHourHeightChange={setTimeLogHourHeight}
+   resizeState={resizeState}
+   moveState={moveState}
+   entries={timeLogEntries}
+   loading={timeLogLoading}
+   selectedBlockUuid={selectedBlockUuid}
+   onSelectBlock={setSelectedBlockUuid}
+   onDoubleClickBlock={handleDoubleClickBlock}
+   onDeleteBlock={deleteTimeLogEntry}
+   onDayChange={handleSelectDay}
+   onDropTodo={handleDropOnTimeLog}
+   nativeDragState={nativeDragState}
+   onDragOverGrid={handleDragOverGrid}
+  />
+ );
 
-  /* ── Misc (right) content ── */
-  const rightContent = activeTab === "tasks" ? (
-    selectedPage !== null ? (
-      <PageDetail pageName={selectedPage} onBack={handleBackToPages} onChangeMarker={handleChangeMarker} />
+ return (
+  <div className="time-log-app">
+   <HeaderBar activeTab={activeTab} onTabChange={setActiveTab} onRefresh={initYears} onClose={handleClose} />
+   <main className="time-log-content">
+    {activeTab === "tasks" ? (
+     <SplitView left={journalContent} right={rightContent} />
     ) : (
-      <PageTodos
-        todos={pageTodos}
-        loading={loading}
-        error={error}
-        onDelete={handlePageDelete}
-        onSelectPage={handleSelectPage}
-        onChangeMarker={handleChangeMarker}
-      />
-    )
-  ) : (
-    <TimeLogView
-      journalDay={selectedDay ?? Math.floor(new Date().getFullYear() * 10000 + (new Date().getMonth() + 1) * 100 + new Date().getDate())}
-      gridRef={gridScrollRef}
-      hourHeight={timeLogHourHeight}
-      onHourHeightChange={setTimeLogHourHeight}
-      resizeState={resizeState}
-      entries={timeLogEntries}
-      loading={timeLogLoading}
-      selectedBlockUuid={selectedBlockUuid}
-      onSelectBlock={setSelectedBlockUuid}
-      onDoubleClickBlock={handleDoubleClickBlock}
-      onDeleteBlock={deleteTimeLogEntry}
-      onDayChange={handleSelectDay}
-      onDropTodo={handleDropOnTimeLog}
-    />
-  );
+     <DndContext
+      sensors={timeLogSensors}
+      collisionDetection={pointerWithin}
+      onDragStart={handleTimeLogDragStart}
+      onDragMove={handleTimeLogDragMove}
+      onDragEnd={handleTimeLogDragEnd}
+     >
+      <SplitView left={journalContent} right={rightContent} />
+      <DragOverlay>
+       {dragActiveData && <DragPreview data={dragActiveData} overMinutes={dragOverMinutes} hourHeight={timeLogHourHeight} entries={timeLogEntries} />}
+      </DragOverlay>
+     </DndContext>
+    )}
 
-  return (
-    <div className="time-log-app">
-      <HeaderBar activeTab={activeTab} onTabChange={setActiveTab} onRefresh={initYears} onClose={handleClose} />
-      <main className="time-log-content">
-        {activeTab === "tasks" ? (
-          <SplitView left={journalContent} right={rightContent} />
-        ) : (
-          <DndContext
-            sensors={timeLogSensors}
-            collisionDetection={pointerWithin}
-            onDragStart={handleTimeLogDragStart}
-            onDragMove={handleTimeLogDragMove}
-            onDragEnd={handleTimeLogDragEnd}
-          >
-            <SplitView left={journalContent} right={rightContent} />
-            <DragOverlay>
-              {dragActiveData && <DragPreview data={dragActiveData} overMinutes={dragOverMinutes} hourHeight={timeLogHourHeight} entries={timeLogEntries} />}
-            </DragOverlay>
-          </DndContext>
-        )}
-
-        {createModalOpen && createModalRange && (
-          <div className="time-create-modal-overlay" onClick={() => setCreateModalOpen(false)}>
-            <div className="time-create-modal" onClick={(e) => e.stopPropagation()}>
-              <h3>New Entry</h3>
-              <p className="time-create-modal-range">
-                {formatHM(createModalRange.start)} - {formatHM(createModalRange.end)}
-              </p>
-              <input
-                type="text"
-                className="time-create-modal-input"
-                placeholder="Activity name"
-                value={createModalName}
-                onChange={(e) => setCreateModalName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && createModalName.trim()) {
-                    createNonTaskEntry(createModalRange.start, createModalRange.end, createModalName.trim());
-                    setCreateModalOpen(false);
-                  }
-                  if (e.key === "Escape") setCreateModalOpen(false);
-                }}
-                autoFocus
-              />
-              <div className="time-create-modal-actions">
-                <button className="time-create-modal-cancel" onClick={() => setCreateModalOpen(false)}>Cancel</button>
-                <button className="time-create-modal-create"
-                  onClick={() => {
-                    if (createModalName.trim()) {
-                      createNonTaskEntry(createModalRange.start, createModalRange.end, createModalName.trim());
-                      setCreateModalOpen(false);
-                    }
-                  }}>Create</button>
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
-    </div>
-  );
+    {createModalOpen && createModalRange && (
+     <div className="time-create-modal-overlay" onClick={() => setCreateModalOpen(false)}>
+      <div className="time-create-modal" onClick={(e) => e.stopPropagation()}>
+       <h3>New Entry</h3>
+       <p className="time-create-modal-range">
+        {formatHM(createModalRange.start)} - {formatHM(createModalRange.end)}
+       </p>
+       <input
+        type="text"
+        className="time-create-modal-input"
+        placeholder="Activity name"
+        value={createModalName}
+        onChange={(e) => setCreateModalName(e.target.value)}
+        onKeyDown={(e) => {
+         if (e.key === "Enter" && createModalName.trim()) {
+          createNonTaskEntry(createModalRange.start, createModalRange.end, createModalName.trim());
+          setCreateModalOpen(false);
+         }
+         if (e.key === "Escape") setCreateModalOpen(false);
+        }}
+        autoFocus
+       />
+       <div className="time-create-modal-actions">
+        <button className="time-create-modal-cancel" onClick={() => setCreateModalOpen(false)}>Cancel</button>
+        <button className="time-create-modal-create"
+         onClick={() => {
+          if (createModalName.trim()) {
+           createNonTaskEntry(createModalRange.start, createModalRange.end, createModalName.trim());
+           setCreateModalOpen(false);
+          }
+         }}>Create</button>
+       </div>
+      </div>
+     </div>
+    )}
+   </main>
+  </div>
+ );
 }
