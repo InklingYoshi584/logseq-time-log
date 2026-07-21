@@ -441,10 +441,18 @@ export default function App() {
  /* ── Time Log persistence ── */
  const refreshTimeLog = useCallback(async () => {
   if (selectedDay === null) return;
-  await new Promise(r => setTimeout(r, 50));
+  await new Promise(r => setTimeout(r, 100));
   const entries = await queryTimeLogEntries(selectedDay);
   setTimeLogEntries(entries);
  }, [selectedDay]);
+
+ const updateEntryLocal = useCallback((uuid: string, patch: Partial<TimeLogEntry>) => {
+  setTimeLogEntries(prev => prev.map(e => e.uuid === uuid ? { ...e, ...patch } : e));
+ }, []);
+
+ const addEntryLocal = useCallback((entry: TimeLogEntry) => {
+  setTimeLogEntries(prev => [...prev, entry]);
+ }, []);
 
  const createTimeLogEntryLoc = useCallback(async (todoUuid: string, startMinutes: number, endMinutes: number) => {
   if (selectedDay === null) return;
@@ -460,7 +468,7 @@ export default function App() {
    ?? `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`;
   const blockUuid = await findOrCreateTimeLogBlock(pageName);
   await logseq.Editor.insertBlock(blockUuid, `${formatHM(startMinutes)} - ${formatHM(endMinutes)} ((${resolvedUuid}))`, { sibling: false });
-  refreshTimeLog();
+  await refreshTimeLog();
  }, [selectedDay, refreshTimeLog]);
 
  const createNonTaskEntry = useCallback(async (startMinutes: number, endMinutes: number, activity: string) => {
@@ -475,7 +483,7 @@ export default function App() {
  const deleteTimeLogEntry = useCallback(async (uuid: string) => {
   await logseq.Editor.removeBlock(uuid);
   setSelectedBlockUuid(null);
-  refreshTimeLog();
+  setTimeLogEntries(prev => prev.filter(e => e.uuid !== uuid));
  }, [selectedDay, refreshTimeLog]);
 
  const handleDropOnTimeLog = useCallback(async (uuid: string, startMinutes: number) => {
@@ -570,7 +578,7 @@ export default function App() {
     const newStart = overMinutes !== null ? Math.max(0, Math.min(23 * 60 + 59 - duration, overMinutes)) : data.startMinutes;
     const newEnd = newStart + duration;
     await updateTimeLogEntry(data.uuid, newStart, newEnd);
-    await refreshTimeLog();
+    updateEntryLocal(data.uuid, { startMinutes: newStart, endMinutes: newEnd });
     break;
    }
    case "time-block-top": {
@@ -578,7 +586,7 @@ export default function App() {
     const newStart = overMinutes !== null ? Math.max(0, Math.min(data.endMinutes - 5, overMinutes)) : (data.startMinutes ?? data.endMinutes - 25);
     if (newStart >= data.endMinutes - 5) return;
     await updateTimeLogEntry(data.uuid, newStart, data.endMinutes);
-    await refreshTimeLog();
+    updateEntryLocal(data.uuid, { startMinutes: newStart });
     break;
    }
    case "time-block-bottom": {
@@ -586,7 +594,7 @@ export default function App() {
     const newEnd = overMinutes !== null ? Math.max(data.startMinutes + 5, Math.min(24 * 60, overMinutes)) : (data.endMinutes ?? data.startMinutes + 25);
     if (newEnd <= data.startMinutes + 5) return;
     await updateTimeLogEntry(data.uuid, data.startMinutes, newEnd);
-    await refreshTimeLog();
+    updateEntryLocal(data.uuid, { endMinutes: newEnd });
     break;
    }
    case "create-selection": {
@@ -600,7 +608,6 @@ export default function App() {
     const blockUuid = await findOrCreateTimeLogBlock(pageName);
     await logseq.Editor.insertBlock(blockUuid, `${formatHM(startMinutes)} - ${formatHM(endMinutes)} Name`, { sibling: false });
     await refreshTimeLog();
-    // Find the newly created entry and open inline edit
     const entries = await queryTimeLogEntries(selectedDay);
     const newEntry = entries.find(e => e.startMinutes === startMinutes && e.endMinutes === endMinutes && !e.isClockEntry);
     if (newEntry) {
@@ -630,7 +637,7 @@ export default function App() {
    const refStr = refMatch ? ` ((${refMatch[1]}))` : (todoUuid ? ` ((${todoUuid}))` : "");
    await logseq.Editor.updateBlock(uuid, `${timePart} ${newName}${refStr}`);
   }
-  await refreshTimeLog();
+  updateEntryLocal(uuid, { activity: newName });
   setEditingBlockUuid(null);
  }, [refreshTimeLog]);
 
