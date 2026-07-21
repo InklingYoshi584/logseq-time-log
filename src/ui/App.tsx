@@ -539,6 +539,7 @@ export default function App() {
   const { active, over } = event;
   const data = active.data.current as DragData | undefined;
   const overMinutes = dragOverRef.current;
+  const startMinutesValue = dragStartRef.current;
   setDragActiveData(null);
   setDragOverMinutes(null);
   dragOverRef.current = null;
@@ -581,7 +582,7 @@ export default function App() {
    case "create-selection": {
     console.log("[time-log] CBD dragEnd", { dragStartRef: dragStartRef.current, dragOverRef: dragOverRef.current });
     if (selectedDay === null) return;
-    const startMinutes = dragStartRef.current ?? computeDefaultMinutes();
+    const startMinutes = startMinutesValue ?? computeDefaultMinutes();
     const endMinutes = overMinutes !== null ? Math.max(startMinutes + 5, Math.min(24 * 60, overMinutes)) : startMinutes + 25;
     setCreateModalRange({ start: startMinutes, end: endMinutes });
     setCreateModalName("");
