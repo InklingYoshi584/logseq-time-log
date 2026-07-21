@@ -212,6 +212,14 @@ export default function TimeGrid({
     onDragOver={(e) => {
      e.preventDefault();
      e.dataTransfer.dropEffect = "copy";
+     // Hide native drag ghost — custom overlay takes over
+     try {
+      const blank = document.createElement("div");
+      blank.style.cssText = "position:fixed;top:-1000px;left:-1000px;width:1px;height:1px";
+      document.body.appendChild(blank);
+      e.dataTransfer.setDragImage(blank, 0, 0);
+      setTimeout(() => document.body.removeChild(blank), 0);
+     } catch { /* ignore */ }
      if (!onDragOverGrid) return;
      // Report snapped time position to parent for overlay
      const zoneRect = e.currentTarget.getBoundingClientRect();
