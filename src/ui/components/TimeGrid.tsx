@@ -256,6 +256,7 @@ export default function TimeGrid({
     }}
     onDrop={(e) => {
      e.preventDefault();
+     console.log("[time-log] onDrop", { shiftKey: e.shiftKey, target: (e.target as HTMLElement).className });
      try {
       const data = JSON.parse(e.dataTransfer.getData("text/plain"));
       if (!data.uuid) return;
