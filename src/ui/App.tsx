@@ -676,18 +676,20 @@ export default function App() {
     {activeTab === "tasks" ? (
      <SplitView left={journalContent} right={rightContent} />
     ) : (
-     <DndContext
-      sensors={timeLogSensors}
-      collisionDetection={pointerWithin}
-      onDragStart={handleTimeLogDragStart}
-      onDragMove={handleTimeLogDragMove}
-      onDragEnd={handleTimeLogDragEnd}
-     >
-      <SplitView left={journalContent} right={rightContent} />
-      <DragOverlay>
-       {dragActiveData && <DragPreview data={dragActiveData} overMinutes={dragOverMinutes} hourHeight={timeLogHourHeight} entries={timeLogEntries} />}
-      </DragOverlay>
-     </DndContext>
+     <SplitView left={journalContent} right={
+      <DndContext
+       sensors={timeLogSensors}
+       collisionDetection={pointerWithin}
+       onDragStart={handleTimeLogDragStart}
+       onDragMove={handleTimeLogDragMove}
+       onDragEnd={handleTimeLogDragEnd}
+      >
+       {rightContent}
+       <DragOverlay>
+        {dragActiveData && <DragPreview data={dragActiveData} overMinutes={dragOverMinutes} hourHeight={timeLogHourHeight} entries={timeLogEntries} />}
+       </DragOverlay>
+      </DndContext>
+     } />
     )}
 
     {createModalOpen && createModalRange && (

@@ -320,6 +320,7 @@ export default function TimeGrid({
 
    <div
     className="time-grid-create-overlay"
+    style={nativeDragState ? { pointerEvents: "none" } : undefined}
     ref={setOverlayRef}
     {...overlayListeners}
     {...overlayAttrs}
