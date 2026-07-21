@@ -264,7 +264,19 @@ export default function TimeGrid({
      e.preventDefault();
      try {
       const data = JSON.parse(e.dataTransfer.getData("text/plain"));
-      if (!data.uuid || !onDropTodo) return;
+      if (!data.uuid) return;
+      // Shift+drop on an existing block = rename it
+      if (e.shiftKey) {
+       const targetBlock = (e.target as HTMLElement).closest('[data-block-uuid]') as HTMLElement | null;
+       if (targetBlock) {
+        const blockUuid = targetBlock.getAttribute('data-block-uuid');
+        if (blockUuid && data.content) {
+         onRenameBlock?.(blockUuid, data.content);
+        }
+        return;
+       }
+      }
+      if (!onDropTodo) return;
       const scrollEl = (e.currentTarget as HTMLElement).closest('.time-grid-scroll') as HTMLElement;
       if (!scrollEl) return;
       const containerTop = scrollEl.getBoundingClientRect().top;

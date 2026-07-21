@@ -452,7 +452,7 @@ export default function App() {
   try {
    const sourceBlock = await logseq.Editor.getBlock(todoUuid);
    const rawContent = typeof sourceBlock?.content === "string" ? sourceBlock.content : "";
-   const refMatch = rawContent.match(/^\(\(([a-f0-9-]+)\)\)/);
+   const refMatch = rawContent.match(/\(\(([a-f0-9-]+)\)\)/);
    if (refMatch) resolvedUuid = refMatch[1];
   } catch { /* use original uuid */ }
   const pageName = await resolveJournalPageName(selectedDay)
@@ -596,7 +596,7 @@ export default function App() {
     const pageName = await resolveJournalPageName(selectedDay)
      ?? `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`;
     const blockUuid = await findOrCreateTimeLogBlock(pageName);
-    const result = await logseq.Editor.insertBlock(blockUuid, `${formatHM(startMinutes)} - ${formatHM(endMinutes)}`, { sibling: false });
+    const result = await logseq.Editor.insertBlock(blockUuid, `${formatHM(startMinutes)} - ${formatHM(endMinutes)} Name`, { sibling: false });
     const newUuid = (result as { uuid?: string })?.uuid;
     await refreshTimeLog();
     if (newUuid) setEditingBlockUuid(newUuid);

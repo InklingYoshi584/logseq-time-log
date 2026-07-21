@@ -88,6 +88,7 @@ export default function TimeBlock({ entry, style, displayStart, displayEnd, isSe
   return (
     <div
       className={classes}
+      data-block-uuid={entry.uuid}
       style={style}
       onClick={(e) => {
         e.stopPropagation();
