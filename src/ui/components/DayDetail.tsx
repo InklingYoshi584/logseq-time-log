@@ -429,48 +429,23 @@ function DraggableTodoCard({ todo, onChangeMarker, depth = 0 }: {
         onDragStart={(e) => {
           e.dataTransfer.setData("text/plain", JSON.stringify({ uuid: todo.uuid, content: todo.content }));
           e.dataTransfer.effectAllowed = "copy";
-        // Create custom drag image: blue rectangle with todo name
-        const img = document.createElement("div");
-        img.style.cssText = `
-          padding: 6px 12px;
-          background: var(--ls-accent, #60a5fa);
-          color: #fff;
-          border-radius: 4px;
-          font-size: 14px;
-          font-weight: 500;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-          white-space: nowrap;
-          position: fixed;
-          top: -1000px;
-          left: -1000px;
-        `;
-        img.textContent = todo.content || "Task";
-        document.body.appendChild(img);
-        e.dataTransfer.setDragImage(img, 0, 0);
-        setTimeout(() => document.body.removeChild(img), 0);
+          const img = document.createElement("div");
+          img.style.cssText = "position:fixed;top:-1000px;left:-1000px;width:1px;height:1px";
+          document.body.appendChild(img);
+          e.dataTransfer.setDragImage(img, 0, 0);
+          setTimeout(() => document.body.removeChild(img), 0);
         }}
       >
         <span className="todo-drag-handle">⋮⋮</span>
-        <button
-          type="button"
+        <button type="button"
           className={`todo-checkbox${todo.marker === "DONE" ? " checked" : ""}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onChangeMarker(todo.uuid, todo.marker === "DONE" ? "TODO" : "DONE");
-          }}
+          onClick={(e) => { e.stopPropagation(); onChangeMarker(todo.uuid, todo.marker === "DONE" ? "TODO" : "DONE"); }}
           title={todo.marker === "DONE" ? "Mark as TODO" : "Mark as DONE"}
-          aria-label="Toggle done"
-        />
+          aria-label="Toggle done" />
         {toggleMarker ? (
-          <button
-            type="button"
-            className="todo-marker todo-marker--clickable"
-            onClick={(e) => {
-              e.stopPropagation();
-              onChangeMarker(todo.uuid, toggleMarker);
-            }}
-            title={`Change to ${MARKER_BADGE[toggleMarker]}`}
-          >
+          <button type="button" className="todo-marker todo-marker--clickable"
+            onClick={(e) => { e.stopPropagation(); onChangeMarker(todo.uuid, toggleMarker); }}
+            title={`Change to ${MARKER_BADGE[toggleMarker]}`}>
             {MARKER_BADGE[todo.marker]}
           </button>
         ) : (
@@ -502,6 +477,6 @@ function formatDay(day: number): string {
   const y = s.slice(0, 4), m = s.slice(4, 6), d = s.slice(6, 8);
   const date = new Date(Number(y), Number(m) - 1, Number(d));
   const weekday = date.toLocaleDateString("en-US", { weekday: "long" });
-  return `${y}-${m}-${d} ${weekday}`;
+  return `${y} -${m} -${d} ${weekday} `;
 }
 
