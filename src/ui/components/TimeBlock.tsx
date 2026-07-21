@@ -115,27 +115,32 @@ export default function TimeBlock({ entry, style, displayStart, displayEnd, isSe
         {actualHeight >= 8 && (
           <>
             {isEditing ? (
-              <input
-                className="time-block-edit-input"
-                defaultValue={entry.activity}
-                autoFocus
-                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  try {
-                    const data = JSON.parse(e.dataTransfer.getData("text/plain"));
-                    if (data.content) {
-                      (e.target as HTMLInputElement).value = data.content;
-                    }
-                  } catch { /* ignore */ }
-                }}
-                onBlur={(e) => onRename?.(entry.uuid, e.target.value.trim() || entry.activity)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") onRename?.(entry.uuid, (e.target as HTMLInputElement).value.trim() || entry.activity);
-                  if (e.key === "Escape") onRename?.(entry.uuid, entry.activity);
-                }}
-                onClick={(e) => e.stopPropagation()}
-              />
+              <>
+                <input
+                  className="time-block-edit-input"
+                  defaultValue={entry.activity}
+                  autoFocus
+                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    try {
+                      const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+                      if (data.content) {
+                        (e.target as HTMLInputElement).value = data.content;
+                      }
+                    } catch { /* ignore */ }
+                  }}
+                  onBlur={(e) => onRename?.(entry.uuid, e.target.value.trim() || entry.activity)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") onRename?.(entry.uuid, (e.target as HTMLInputElement).value.trim() || entry.activity);
+                    if (e.key === "Escape") onRename?.(entry.uuid, entry.activity);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <button className="time-block-edit-delete"
+                  onClick={(e) => { e.stopPropagation(); onDelete(entry.uuid); }}
+                  title="Delete">✕</button>
+              </>
             ) : (
               <>
                 <span className="time-block-time">
