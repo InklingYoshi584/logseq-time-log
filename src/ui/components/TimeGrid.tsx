@@ -190,22 +190,13 @@ export default function TimeGrid({
  // ── Block layout ──
  const layoutBlocks = useMemo(() => computeLayout(entries), [entries]);
 
- // ── Click on empty grid space to deselect ──
- const handleGridZoneClick = useCallback(
-  (e: React.MouseEvent) => {
-   if (e.target === e.currentTarget) {
-    onSelectBlock(null);
-   }
-  },
-  [onSelectBlock],
- );
-
  const totalHeight = HOURS_PER_DAY * hourHeight;
 
  return (
   <div
    className="time-grid"
    ref={gridContainerRef}
+   onClick={() => onSelectBlock(null)}
    style={{ minHeight: totalHeight }}
   >
    <HourMarkers hourHeight={hourHeight} />
@@ -214,7 +205,6 @@ export default function TimeGrid({
    <div
     className={`time-grid-zone${isOver ? " time-grid-zone--over" : ""}`}
     ref={setDroppableRef}
-    onClick={handleGridZoneClick}
     onDragOver={(e) => {
      e.preventDefault();
      e.dataTransfer.dropEffect = "copy";
