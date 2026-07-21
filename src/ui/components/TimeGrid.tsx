@@ -189,23 +189,6 @@ export default function TimeGrid({
  // ── Click on empty grid space to deselect ──
  const handleGridZoneClick = useCallback(
   (e: React.MouseEvent) => {
-   // Debug: log computed time from click position
-   const zoneRect = e.currentTarget.getBoundingClientRect();
-   const parentScroll = (e.currentTarget as HTMLElement).closest('.time-grid-scroll');
-   const scrollTop = parentScroll ? (parentScroll as HTMLElement).scrollTop : 0;
-   const relativeY = e.clientY - zoneRect.top + scrollTop;
-   const minutes = (relativeY / hourHeight) * 60;
-   const snapped = Math.round(minutes / 5) * 5;
-   console.log("[time-log] click at", {
-    clientY: e.clientY,
-    zoneTop: zoneRect.top,
-    scrollTop,
-    relativeY,
-    hourHeight,
-    minutes: minutes.toFixed(1),
-    snapped,
-    time: `${String(Math.floor(snapped / 60)).padStart(2, "0")}:${String(snapped % 60).padStart(2, "0")}`,
-   });
    if (e.target === e.currentTarget) {
     onSelectBlock(null);
    }
@@ -215,27 +198,10 @@ export default function TimeGrid({
 
  const totalHeight = HOURS_PER_DAY * hourHeight;
 
- if (createState) console.log("[time-log] CBD rendering", createState.startMinutes, createState.endMinutes);
-
  return (
   <div
    className="time-grid"
    ref={gridContainerRef}
-   onMouseDownCapture={(e) => {
-    if (e.button !== 0) return;
-    const scrollEl = (e.currentTarget as HTMLElement).closest('.time-grid-scroll') as HTMLElement;
-    if (!scrollEl) return;
-    const containerTop = scrollEl.getBoundingClientRect().top;
-    const st = scrollEl.scrollTop;
-    const ry = e.clientY - containerTop + st;
-    const mins = (ry / hourHeight) * 60;
-    const snap = Math.round(mins / 5) * 5;
-    console.log("[time-log] mousedown", JSON.stringify({
-     clientY: e.clientY, containerTop: Math.round(containerTop), scrollTop: st,
-     relativeY: Math.round(ry), hourHeight, minutes: mins.toFixed(1), snapped: snap,
-     time: `${String(Math.floor(snap / 60)).padStart(2, "0")}:${String(snap % 60).padStart(2, "0")}`
-    }));
-   }}
    style={{ minHeight: totalHeight }}
   >
    <HourMarkers hourHeight={hourHeight} />

@@ -579,6 +579,7 @@ export default function App() {
     break;
    }
    case "create-selection": {
+    console.log("[time-log] CBD dragEnd", { dragStartRef: dragStartRef.current, dragOverRef: dragOverRef.current });
     if (selectedDay === null) return;
     const startMinutes = dragStartRef.current ?? computeDefaultMinutes();
     const endMinutes = overMinutes !== null ? Math.max(startMinutes + 5, Math.min(24 * 60, overMinutes)) : startMinutes + 25;
