@@ -203,7 +203,7 @@ export default function TimeGrid({
    style={{ minHeight: totalHeight }}
   >
    <HourMarkers hourHeight={hourHeight} />
-   <CurrentTimeLine top={currentTimeTop} />
+   <CurrentTimeLine top={currentTimeTop} label={formatHM(nowMinutes)} />
 
    <div
     className={`time-grid-zone${isOver ? " time-grid-zone--over" : ""}`}
@@ -215,10 +215,14 @@ export default function TimeGrid({
      // Hide native drag ghost — custom overlay takes over
      try {
       const blank = document.createElement("div");
-      blank.style.cssText = "position:fixed;top:-1000px;left:-1000px;width:1px;height:1px";
+      blank.id = "time-log-drag-blank";
+      blank.style.cssText = "position:fixed;top:0;left:0;width:0;height:0;opacity:0;pointer-events:none";
+      // Remove any previous blank
+      document.getElementById("time-log-drag-blank")?.remove();
       document.body.appendChild(blank);
       e.dataTransfer.setDragImage(blank, 0, 0);
-      setTimeout(() => document.body.removeChild(blank), 0);
+      // Keep alive until drag ends
+      setTimeout(() => document.getElementById("time-log-drag-blank")?.remove(), 5000);
      } catch { /* ignore */ }
      if (!onDragOverGrid) return;
      // Report snapped time position to parent for overlay

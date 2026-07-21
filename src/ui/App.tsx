@@ -67,6 +67,17 @@ function DragPreview({ data, overMinutes, hourHeight, entries }: {
   );
  }
 
+ if (data.type === "create-selection" && overMinutes !== null) {
+  const start = overMinutes;
+  const end = Math.min(24 * 60, start + 30);
+  const h = Math.max(4, ((end - start) / 60) * hourHeight);
+  return (
+   <div className="time-drag-overlay time-drag-overlay--block time-drag-overlay--event" style={{ height: `${h}px` }}>
+    <span className="time-drag-overlay-time">{formatHM(start)} - {formatHM(end)}</span>
+   </div>
+  );
+ }
+
  return null;
 }
 
