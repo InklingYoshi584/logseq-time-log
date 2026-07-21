@@ -625,8 +625,8 @@ export default function App() {
    const refStr = refMatch ? ` ((${refMatch[1]}))` : (todoUuid ? ` ((${todoUuid}))` : "");
    await logseq.Editor.updateBlock(uuid, `${timePart} ${newName}${refStr}`);
   }
+  await refreshTimeLog();
   setEditingBlockUuid(null);
-  refreshTimeLog();
  }, [refreshTimeLog]);
 
  /* ── Journal (left) content ── */
