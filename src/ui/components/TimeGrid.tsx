@@ -9,6 +9,7 @@ interface TimeGridProps {
  entries: TimeLogEntry[];
  hourHeight: number;
  resizeState?: { uuid: string; type: "top" | "bottom"; minutes: number } | null;
+ createState?: { startMinutes: number; endMinutes: number } | null;
  moveState?: { uuid: string; startMinutes: number } | null;
  selectedBlockUuid: string | null;
  onSelectBlock: (uuid: string | null) => void;
@@ -122,6 +123,7 @@ export default function TimeGrid({
  entries,
  hourHeight,
  resizeState,
+ createState,
  moveState,
  selectedBlockUuid,
  onSelectBlock,
@@ -326,6 +328,25 @@ export default function TimeGrid({
      >
       <span className="time-drag-overlay-time">{formatHM(nativeDragState.startMinutes)} - {formatHM(Math.min(24 * 60, nativeDragState.startMinutes + 25))}</span>
       <span className="time-drag-overlay-activity">{nativeDragState.content}</span>
+     </div>
+    )}
+
+    {createState && (
+     <div className="time-block time-block--event"
+      style={{
+       position: "absolute",
+       top: (createState.startMinutes / 60) * hourHeight,
+       height: Math.max(2, ((createState.endMinutes - createState.startMinutes) / 60) * hourHeight),
+       left: 0,
+       right: 0,
+       zIndex: 100,
+       pointerEvents: "none",
+       opacity: 0.6,
+      }}
+     >
+      <div className="time-block-body">
+       <span className="time-block-time">{formatHM(createState.startMinutes)} - {formatHM(createState.endMinutes)}</span>
+      </div>
      </div>
     )}
    </div>

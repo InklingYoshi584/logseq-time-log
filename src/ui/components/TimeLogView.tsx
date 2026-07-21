@@ -11,6 +11,7 @@ interface TimeLogViewProps {
  hourHeight: number;
  onHourHeightChange: (h: number) => void;
  resizeState: { uuid: string; type: "top" | "bottom"; minutes: number } | null;
+ createState?: { startMinutes: number; endMinutes: number } | null;
  moveState?: { uuid: string; startMinutes: number } | null;
  selectedBlockUuid: string | null;
  onSelectBlock: (uuid: string | null) => void;
@@ -53,6 +54,7 @@ export default function TimeLogView({
  hourHeight,
  onHourHeightChange,
  resizeState,
+ createState,
  moveState,
  selectedBlockUuid,
  onSelectBlock,
@@ -152,6 +154,7 @@ export default function TimeLogView({
       nativeDragState={nativeDragState}
       onDragOverGrid={onDragOverGrid}
       resizeState={resizeState}
+      createState={createState}
       moveState={moveState}
       selectedBlockUuid={selectedBlockUuid}
       onSelectBlock={onSelectBlock}

@@ -18,6 +18,8 @@ function formatHM(minutes: number): string {
 
 export default function TimeBlock({ entry, style, displayStart, displayEnd, isSelected, onSelect, onDoubleClick, onDelete }: TimeBlockProps) {
   const actualHeight = parseFloat(String(style.height)) || 0;
+  const compact = actualHeight < 30;
+  const bodyStyle = compact ? { fontSize: "10px", lineHeight: 1.1 } : undefined;
 
   const {
     attributes: bodyAttrs,
@@ -101,10 +103,11 @@ export default function TimeBlock({ entry, style, displayStart, displayEnd, isSe
       <div
         className="time-block-body"
         ref={bodyRef}
+        style={bodyStyle}
         {...bodyListeners}
         {...bodyAttrs}
       >
-        {actualHeight >= 15 && (
+        {actualHeight >= 12 && (
           <>
             <span className="time-block-time">
               {formatHM(displayStart ?? entry.startMinutes)} - {formatHM(displayEnd ?? entry.endMinutes)}

@@ -68,19 +68,6 @@ function DragPreview({ data, overMinutes, hourHeight, entries, dragStartMinutes 
   );
  }
 
- if (data.type === "create-selection" && overMinutes !== null) {
-  const start = overMinutes;
-  const end = data.endMinutes && data.endMinutes > start + 5
-   ? data.endMinutes
-   : Math.min(24 * 60, start + 25);
-  const h = Math.max(4, ((end - start) / 60) * hourHeight);
-  return (
-   <div className="time-drag-overlay time-drag-overlay--block time-drag-overlay--event" style={{ height: `${h}px` }}>
-    <span className="time-drag-overlay-time">{formatHM(start)} - {formatHM(end)}</span>
-   </div>
-  );
- }
-
  return null;
 }
 
@@ -111,6 +98,7 @@ export default function App() {
  const [createModalName, setCreateModalName] = useState("");
  const [timeLogHourHeight, setTimeLogHourHeight] = useState(60);
  const [resizeState, setResizeState] = useState<{ uuid: string; type: "top" | "bottom"; minutes: number } | null>(null);
+ const [createState, setCreateState] = useState<{ startMinutes: number; endMinutes: number } | null>(null);
  const [moveState, setMoveState] = useState<{ uuid: string; startMinutes: number } | null>(null);
  const [nativeDragState, setNativeDragState] = useState<{ uuid: string; content: string; startMinutes: number | null } | null>(null);
  const gridScrollRef = useRef<HTMLDivElement | null>(null);
@@ -533,6 +521,11 @@ export default function App() {
   } else if (data.type === "time-block" && data.uuid && data.startMinutes !== undefined && data.endMinutes !== undefined) {
    const duration = data.endMinutes - data.startMinutes;
    setMoveState({ uuid: data.uuid, startMinutes: Math.max(0, Math.min(23 * 60 + 55 - duration, snapped)) });
+  } else if (data.type === "create-selection") {
+   if (dragStartMinutes !== null) {
+    const end = Math.max(dragStartMinutes + 5, snapped);
+    setCreateState({ startMinutes: dragStartMinutes, endMinutes: end });
+   }
   }
  }, [timeLogHourHeight]);
  const handleTimeLogDragEnd = useCallback(async (event: DragEndEvent) => {
@@ -543,6 +536,7 @@ export default function App() {
   setDragStartMinutes(null);
   setResizeState(null);
   setMoveState(null);
+  setCreateState(null);
   if (!data || !over) return;
 
   const overId = String(over.id);
@@ -662,6 +656,7 @@ export default function App() {
    hourHeight={timeLogHourHeight}
    onHourHeightChange={setTimeLogHourHeight}
    resizeState={resizeState}
+   createState={createState}
    moveState={moveState}
    entries={timeLogEntries}
    loading={timeLogLoading}
