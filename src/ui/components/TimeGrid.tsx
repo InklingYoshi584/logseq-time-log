@@ -376,7 +376,8 @@ export default function TimeGrid({
        zIndex: 100,
        pointerEvents: "none",
        opacity: 0.75,
-       borderStyle: "dashed",
+       border: "3px dashed var(--ls-accent, #60a5fa)",
+       background: "color-mix(in srgb, var(--ls-accent, #60a5fa) 40%, transparent)",
       }}
      >
       <div className="time-block-body">

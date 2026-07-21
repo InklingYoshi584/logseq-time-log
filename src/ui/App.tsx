@@ -522,9 +522,10 @@ export default function App() {
    const duration = data.endMinutes - data.startMinutes;
    setMoveState({ uuid: data.uuid, startMinutes: Math.max(0, Math.min(23 * 60 + 55 - duration, snapped)) });
   } else if (data.type === "create-selection") {
-   if (dragStartMinutes !== null) {
-    const end = Math.max(dragStartMinutes + 5, snapped);
-    setCreateState({ startMinutes: dragStartMinutes, endMinutes: end });
+   if (dragOverMinutes !== null) {
+    const start = dragStartMinutes ?? dragOverMinutes;
+    const end = Math.max(start + 5, snapped);
+    setCreateState({ startMinutes: start, endMinutes: end });
    }
   }
  }, [timeLogHourHeight]);
