@@ -545,8 +545,7 @@ export default function App() {
    case "time-block": {
     if (!data.uuid || data.startMinutes === undefined || data.endMinutes === undefined) return;
     const duration = data.endMinutes - data.startMinutes;
-    const deltaMinutes = deltaToMinutes(event.delta.y);
-    const newStart = Math.max(0, Math.min(23 * 60 + 59 - duration, data.startMinutes + deltaMinutes));
+    const newStart = dragOverMinutes !== null ? Math.max(0, Math.min(23 * 60 + 59 - duration, dragOverMinutes)) : data.startMinutes;
     const newEnd = newStart + duration;
     await updateTimeLogEntry(data.uuid, newStart, newEnd);
     refreshTimeLog();
@@ -554,8 +553,7 @@ export default function App() {
    }
    case "time-block-top": {
     if (!data.uuid || data.endMinutes === undefined) return;
-    const deltaMinutes = deltaToMinutes(event.delta.y);
-    const newStart = Math.max(0, Math.min(data.endMinutes - 5, (data.startMinutes ?? 0) + deltaMinutes));
+    const newStart = dragOverMinutes !== null ? Math.max(0, Math.min(data.endMinutes - 5, dragOverMinutes)) : (data.startMinutes ?? data.endMinutes - 25);
     if (newStart >= data.endMinutes - 5) return;
     await updateTimeLogEntry(data.uuid, newStart, data.endMinutes);
     refreshTimeLog();
@@ -563,8 +561,7 @@ export default function App() {
    }
    case "time-block-bottom": {
     if (!data.uuid || data.startMinutes === undefined) return;
-    const deltaMinutes = deltaToMinutes(event.delta.y);
-    const newEnd = Math.max(data.startMinutes + 5, Math.min(24 * 60, (data.endMinutes ?? data.startMinutes + 30) + deltaMinutes));
+    const newEnd = dragOverMinutes !== null ? Math.max(data.startMinutes + 5, Math.min(24 * 60, dragOverMinutes)) : (data.endMinutes ?? data.startMinutes + 25);
     if (newEnd <= data.startMinutes + 5) return;
     await updateTimeLogEntry(data.uuid, data.startMinutes, newEnd);
     refreshTimeLog();
@@ -572,8 +569,8 @@ export default function App() {
    }
    case "create-selection": {
     if (selectedDay === null) return;
-    const startMinutes = dragOverMinutes ?? computeDefaultMinutes();
-    const endMinutes = Math.min(24 * 60, startMinutes + Math.max(15, deltaToMinutes(Math.abs(event.delta.y)) || 25));
+    const startMinutes = dragStartMinutes ?? computeDefaultMinutes();
+    const endMinutes = dragOverMinutes !== null ? Math.max(startMinutes + 5, Math.min(24 * 60, dragOverMinutes)) : startMinutes + 25;
     setCreateModalRange({ start: startMinutes, end: endMinutes });
     setCreateModalName("");
     setCreateModalOpen(true);

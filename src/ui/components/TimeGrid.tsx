@@ -337,11 +337,12 @@ export default function TimeGrid({
        position: "absolute",
        top: (createState.startMinutes / 60) * hourHeight,
        height: Math.max(2, ((createState.endMinutes - createState.startMinutes) / 60) * hourHeight),
-       left: 0,
-       right: 0,
+       left: "2%",
+       width: "96%",
        zIndex: 100,
        pointerEvents: "none",
-       opacity: 0.6,
+       opacity: 0.75,
+       borderStyle: "dashed",
       }}
      >
       <div className="time-block-body">
