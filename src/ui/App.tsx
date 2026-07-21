@@ -650,11 +650,8 @@ export default function App() {
     // Refresh to get updated entry with todoUuid
    } else {
     // Inline rename: just update the name
-    const refMatch = oldRest.match(/\(\(([a-f0-9-]+)\)\)/);
-    const refStr = refMatch ? ` ((${refMatch[1]}))` : "";
-    const existingTodoUuid = refMatch ? refMatch[1] : undefined;
-    await logseq.Editor.updateBlock(uuid, `${timePart} ${newName}${refStr}`);
-    updateEntryLocal(uuid, { activity: newName, ...(existingTodoUuid ? { todoUuid: existingTodoUuid } : {}) });
+    await logseq.Editor.updateBlock(uuid, `${timePart} ${newName}`);
+    updateEntryLocal(uuid, { activity: newName, todoUuid: undefined });
    }
   }
   setEditingBlockUuid(null);
