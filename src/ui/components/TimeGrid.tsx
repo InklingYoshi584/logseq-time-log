@@ -189,6 +189,23 @@ export default function TimeGrid({
  // ── Click on empty grid space to deselect ──
  const handleGridZoneClick = useCallback(
   (e: React.MouseEvent) => {
+   // Debug: log computed time from click position
+   const zoneRect = e.currentTarget.getBoundingClientRect();
+   const parentScroll = (e.currentTarget as HTMLElement).closest('.time-grid-scroll');
+   const scrollTop = parentScroll ? (parentScroll as HTMLElement).scrollTop : 0;
+   const relativeY = e.clientY - zoneRect.top + scrollTop;
+   const minutes = (relativeY / hourHeight) * 60;
+   const snapped = Math.round(minutes / 5) * 5;
+   console.log("[time-log] click at", {
+    clientY: e.clientY,
+    zoneTop: zoneRect.top,
+    scrollTop,
+    relativeY,
+    hourHeight,
+    minutes: minutes.toFixed(1),
+    snapped,
+    time: `${String(Math.floor(snapped / 60)).padStart(2, "0")}:${String(snapped % 60).padStart(2, "0")}`,
+   });
    if (e.target === e.currentTarget) {
     onSelectBlock(null);
    }
