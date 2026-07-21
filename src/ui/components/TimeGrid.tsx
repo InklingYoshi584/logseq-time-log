@@ -221,14 +221,15 @@ export default function TimeGrid({
    ref={gridContainerRef}
    onMouseDownCapture={(e) => {
     if (e.button !== 0) return;
-    const gridRect = e.currentTarget.getBoundingClientRect();
-    const scrollEl = (e.currentTarget as HTMLElement).closest('.time-grid-scroll') as HTMLElement | null;
-    const st = scrollEl?.scrollTop ?? 0;
-    const ry = e.clientY - gridRect.top + st;
+    const scrollEl = (e.currentTarget as HTMLElement).closest('.time-grid-scroll') as HTMLElement;
+    if (!scrollEl) return;
+    const containerTop = scrollEl.getBoundingClientRect().top;
+    const st = scrollEl.scrollTop;
+    const ry = e.clientY - containerTop + st;
     const mins = (ry / hourHeight) * 60;
     const snap = Math.round(mins / 5) * 5;
     console.log("[time-log] mousedown", JSON.stringify({
-     clientY: e.clientY, gridTop: Math.round(gridRect.top), scrollTop: st,
+     clientY: e.clientY, containerTop: Math.round(containerTop), scrollTop: st,
      relativeY: Math.round(ry), hourHeight, minutes: mins.toFixed(1), snapped: snap,
      time: `${String(Math.floor(snap / 60)).padStart(2, "0")}:${String(snap % 60).padStart(2, "0")}`
     }));
@@ -259,10 +260,11 @@ export default function TimeGrid({
      } catch { /* ignore */ }
      if (!onDragOverGrid) return;
      // Report snapped time position to parent for overlay
-     const zoneRect = e.currentTarget.getBoundingClientRect();
-     const parentScroll = e.currentTarget.closest('.time-grid-scroll');
-     const scrollTop = parentScroll ? (parentScroll as HTMLElement).scrollTop : 0;
-     const relativeY = e.clientY - zoneRect.top + scrollTop;
+     const scrollEl = (e.currentTarget as HTMLElement).closest('.time-grid-scroll') as HTMLElement;
+     if (!scrollEl) return;
+     const containerTop = scrollEl.getBoundingClientRect().top;
+     const scrollTop = scrollEl.scrollTop;
+     const relativeY = e.clientY - containerTop + scrollTop;
      const minutes = (relativeY / hourHeight) * 60;
      const snapped = Math.round(minutes / 5) * 5;
      onDragOverGrid(Math.max(0, Math.min(23 * 60 + 55, snapped)));
@@ -291,10 +293,11 @@ export default function TimeGrid({
      try {
       const data = JSON.parse(e.dataTransfer.getData("text/plain"));
       if (!data.uuid || !onDropTodo) return;
-      const zoneRect = e.currentTarget.getBoundingClientRect();
-      const parentScroll = e.currentTarget.closest('.time-grid-scroll');
-      const scrollTop = parentScroll ? (parentScroll as HTMLElement).scrollTop : 0;
-      const relativeY = e.clientY - zoneRect.top + scrollTop;
+      const scrollEl = (e.currentTarget as HTMLElement).closest('.time-grid-scroll') as HTMLElement;
+      if (!scrollEl) return;
+      const containerTop = scrollEl.getBoundingClientRect().top;
+      const scrollTop = scrollEl.scrollTop;
+      const relativeY = e.clientY - containerTop + scrollTop;
       const minutes = (relativeY / hourHeight) * 60;
       const snapped = Math.round(minutes / 5) * 5;
       const startMinutes = Math.max(0, Math.min(23 * 60 + 55, snapped));
