@@ -20,8 +20,8 @@ interface TimeLogViewProps {
  onRenameBlock?: (uuid: string, name: string, todoUuid?: string) => void;
  onDeleteBlock: (uuid: string) => void;
  onDayChange: (day: number) => void;
- nativeDragState?: { uuid: string; content: string; startMinutes: number | null } | null;
- onDragOverGrid?: (minutes: number | null) => void;
+ nativeDragState?: { uuid: string; content: string; startMinutes: number | null; shiftKey: boolean } | null;
+ onDragOverGrid?: (minutes: number | null, shiftKey?: boolean) => void;
 }
 
 function goToPrevDay(journalDay: number): number {

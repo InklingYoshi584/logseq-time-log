@@ -18,8 +18,8 @@ interface TimeGridProps {
  onRenameBlock?: (uuid: string, name: string, todoUuid?: string) => void;
  onDeleteBlock: (uuid: string) => void;
  onDropTodo?: (uuid: string, startMinutes: number) => void;
- onDragOverGrid?: (minutes: number | null) => void;
- nativeDragState?: { uuid: string; content: string; startMinutes: number | null } | null;
+ onDragOverGrid?: (minutes: number | null, shiftKey?: boolean) => void;
+ nativeDragState?: { uuid: string; content: string; startMinutes: number | null; shiftKey: boolean } | null;
 }
 
 // Width of the hour marker column — must match .time-grid-markers in App.css
@@ -203,7 +203,7 @@ export default function TimeGrid({
    <CurrentTimeLine top={currentTimeTop} label={formatHM(nowMinutes)} />
 
    <div
-    className={`time-grid-zone${isOver ? " time-grid-zone--over" : ""}`}
+    className={`time-grid-zone${isOver ? " time-grid-zone--over" : ""}${nativeDragState?.shiftKey ? " time-grid-zone--shift" : ""}`}
     ref={setDroppableRef}
     onDragOver={(e) => {
      e.preventDefault();
@@ -229,7 +229,7 @@ export default function TimeGrid({
      const relativeY = e.clientY - containerTop + scrollTop;
      const minutes = (relativeY / hourHeight) * 60;
      const snapped = Math.round(minutes / 5) * 5;
-     onDragOverGrid(Math.max(0, Math.min(23 * 60 + 55, snapped)));
+     onDragOverGrid(Math.max(0, Math.min(23 * 60 + 55, snapped)), e.shiftKey);
      // Clear any pending onDragLeave clear
      if (dragLeaveTimer.current) {
       clearTimeout(dragLeaveTimer.current);
@@ -324,7 +324,7 @@ export default function TimeGrid({
      );
     })}
 
-    {nativeDragState && nativeDragState.startMinutes !== null && (
+    {nativeDragState && nativeDragState.startMinutes !== null && !nativeDragState.shiftKey && (
      <div className="time-drag-overlay time-drag-overlay--block time-drag-overlay--task"
       style={{
        position: "absolute",

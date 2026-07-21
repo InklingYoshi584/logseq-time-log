@@ -91,7 +91,7 @@ export default function App() {
  const [editingBlockUuid, setEditingBlockUuid] = useState<string | null>(null);
  const [createState, setCreateState] = useState<{ startMinutes: number; endMinutes: number } | null>(null);
  const [moveState, setMoveState] = useState<{ uuid: string; startMinutes: number } | null>(null);
- const [nativeDragState, setNativeDragState] = useState<{ uuid: string; content: string; startMinutes: number | null } | null>(null);
+ const [nativeDragState, setNativeDragState] = useState<{ uuid: string; content: string; startMinutes: number | null; shiftKey: boolean } | null>(null);
  const gridScrollRef = useRef<HTMLDivElement | null>(null);
 
  /* ── Close / ESC ── */
@@ -411,7 +411,7 @@ export default function App() {
    try {
     const data = JSON.parse(e.dataTransfer?.getData("text/plain") || "{}");
     if (data.uuid && data.content) {
-     setNativeDragState({ uuid: data.uuid, content: data.content, startMinutes: null });
+     setNativeDragState({ uuid: data.uuid, content: data.content, startMinutes: null, shiftKey: false });
     }
    } catch { /* ignore non-our drags */ }
   };
@@ -424,8 +424,8 @@ export default function App() {
   };
  }, []);
 
- const handleDragOverGrid = useCallback((minutes: number | null) => {
-  setNativeDragState(prev => prev ? { ...prev, startMinutes: minutes } : null);
+ const handleDragOverGrid = useCallback((minutes: number | null, shiftKey?: boolean) => {
+  setNativeDragState(prev => prev ? { ...prev, startMinutes: minutes, shiftKey: !!shiftKey } : null);
  }, []);
 
  function deltaToMinutes(deltaY: number): number {

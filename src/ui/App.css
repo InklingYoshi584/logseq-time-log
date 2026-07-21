@@ -1445,3 +1445,6 @@ html, body, #root {
   background: rgba(255,0,0,0.4);
   opacity: 1;
 }
+.time-grid-zone--shift {
+  cursor: alias;
+}
