@@ -573,17 +573,7 @@ export default function App() {
   <div
    className="journal-drop-zone"
    style={dragActiveData ? { overflow: 'hidden' } : undefined}
-   onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
-   onDrop={(e) => {
-    e.preventDefault();
-    try {
-     const data = JSON.parse(e.dataTransfer.getData("text/plain"));
-     if (data.uuid) handleDropOnJournal(data.uuid);
-    } catch {
-     const uuid = e.dataTransfer.getData("text/plain");
-     if (uuid) handleDropOnJournal(uuid);
-    }
-   }}
+   {...(activeTab === "tasks" ? { onDragOver: (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }, onDrop: (e: React.DragEvent) => { e.preventDefault(); try { const data = JSON.parse(e.dataTransfer.getData("text/plain")); if (data.uuid) handleDropOnJournal(data.uuid); } catch { const uuid = e.dataTransfer.getData("text/plain"); if (uuid) handleDropOnJournal(uuid); } } } : {})}
   >
    <DayDetail
     readOnly={activeTab === "timelog"}
@@ -612,17 +602,7 @@ export default function App() {
   <div
    className="journal-drop-zone"
    style={dragActiveData ? { overflow: 'hidden' } : undefined}
-   onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
-   onDrop={(e) => {
-    e.preventDefault();
-    try {
-     const data = JSON.parse(e.dataTransfer.getData("text/plain"));
-     if (data.uuid) handleDropOnJournal(data.uuid);
-    } catch {
-     const uuid = e.dataTransfer.getData("text/plain");
-     if (uuid) handleDropOnJournal(uuid);
-    }
-   }}
+   {...(activeTab === "tasks" ? { onDragOver: (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }, onDrop: (e: React.DragEvent) => { e.preventDefault(); try { const data = JSON.parse(e.dataTransfer.getData("text/plain")); if (data.uuid) handleDropOnJournal(data.uuid); } catch { const uuid = e.dataTransfer.getData("text/plain"); if (uuid) handleDropOnJournal(uuid); } } } : {})}
   >
    <CalendarView
     yearRange={yearRange}
