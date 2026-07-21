@@ -441,6 +441,7 @@ export default function App() {
  /* ── Time Log persistence ── */
  const refreshTimeLog = useCallback(async () => {
   if (selectedDay === null) return;
+  await new Promise(r => setTimeout(r, 50));
   const entries = await queryTimeLogEntries(selectedDay);
   setTimeLogEntries(entries);
  }, [selectedDay]);
@@ -569,7 +570,7 @@ export default function App() {
     const newStart = overMinutes !== null ? Math.max(0, Math.min(23 * 60 + 59 - duration, overMinutes)) : data.startMinutes;
     const newEnd = newStart + duration;
     await updateTimeLogEntry(data.uuid, newStart, newEnd);
-    refreshTimeLog();
+    await refreshTimeLog();
     break;
    }
    case "time-block-top": {
@@ -577,7 +578,7 @@ export default function App() {
     const newStart = overMinutes !== null ? Math.max(0, Math.min(data.endMinutes - 5, overMinutes)) : (data.startMinutes ?? data.endMinutes - 25);
     if (newStart >= data.endMinutes - 5) return;
     await updateTimeLogEntry(data.uuid, newStart, data.endMinutes);
-    refreshTimeLog();
+    await refreshTimeLog();
     break;
    }
    case "time-block-bottom": {
@@ -585,7 +586,7 @@ export default function App() {
     const newEnd = overMinutes !== null ? Math.max(data.startMinutes + 5, Math.min(24 * 60, overMinutes)) : (data.endMinutes ?? data.startMinutes + 25);
     if (newEnd <= data.startMinutes + 5) return;
     await updateTimeLogEntry(data.uuid, data.startMinutes, newEnd);
-    refreshTimeLog();
+    await refreshTimeLog();
     break;
    }
    case "create-selection": {
