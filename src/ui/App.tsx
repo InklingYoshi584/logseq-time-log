@@ -537,6 +537,7 @@ export default function App() {
  const handleTimeLogDragEnd = useCallback(async (event: DragEndEvent) => {
   const { active, over } = event;
   const data = active.data.current as DragData | undefined;
+  const overMinutes = dragOverRef.current;
   setDragActiveData(null);
   setDragOverMinutes(null);
   dragOverRef.current = null;
@@ -553,7 +554,7 @@ export default function App() {
    case "time-block": {
     if (!data.uuid || data.startMinutes === undefined || data.endMinutes === undefined) return;
     const duration = data.endMinutes - data.startMinutes;
-    const newStart = dragOverMinutes !== null ? Math.max(0, Math.min(23 * 60 + 59 - duration, dragOverMinutes)) : data.startMinutes;
+    const newStart = overMinutes !== null ? Math.max(0, Math.min(23 * 60 + 59 - duration, overMinutes)) : data.startMinutes;
     const newEnd = newStart + duration;
     await updateTimeLogEntry(data.uuid, newStart, newEnd);
     refreshTimeLog();
@@ -561,7 +562,7 @@ export default function App() {
    }
    case "time-block-top": {
     if (!data.uuid || data.endMinutes === undefined) return;
-    const newStart = dragOverMinutes !== null ? Math.max(0, Math.min(data.endMinutes - 5, dragOverMinutes)) : (data.startMinutes ?? data.endMinutes - 25);
+    const newStart = overMinutes !== null ? Math.max(0, Math.min(data.endMinutes - 5, overMinutes)) : (data.startMinutes ?? data.endMinutes - 25);
     if (newStart >= data.endMinutes - 5) return;
     await updateTimeLogEntry(data.uuid, newStart, data.endMinutes);
     refreshTimeLog();
@@ -569,7 +570,7 @@ export default function App() {
    }
    case "time-block-bottom": {
     if (!data.uuid || data.startMinutes === undefined) return;
-    const newEnd = dragOverMinutes !== null ? Math.max(data.startMinutes + 5, Math.min(24 * 60, dragOverMinutes)) : (data.endMinutes ?? data.startMinutes + 25);
+    const newEnd = overMinutes !== null ? Math.max(data.startMinutes + 5, Math.min(24 * 60, overMinutes)) : (data.endMinutes ?? data.startMinutes + 25);
     if (newEnd <= data.startMinutes + 5) return;
     await updateTimeLogEntry(data.uuid, data.startMinutes, newEnd);
     refreshTimeLog();
@@ -578,7 +579,7 @@ export default function App() {
    case "create-selection": {
     if (selectedDay === null) return;
     const startMinutes = dragStartRef.current ?? computeDefaultMinutes();
-    const endMinutes = dragOverMinutes !== null ? Math.max(startMinutes + 5, Math.min(24 * 60, dragOverMinutes)) : startMinutes + 25;
+    const endMinutes = overMinutes !== null ? Math.max(startMinutes + 5, Math.min(24 * 60, overMinutes)) : startMinutes + 25;
     setCreateModalRange({ start: startMinutes, end: endMinutes });
     setCreateModalName("");
     setCreateModalOpen(true);
