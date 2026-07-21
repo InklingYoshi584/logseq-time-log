@@ -207,7 +207,12 @@ export default function TimeGrid({
     ref={setDroppableRef}
     onDragOver={(e) => {
      e.preventDefault();
-     e.dataTransfer.dropEffect = "copy";
+     if (e.shiftKey) {
+      const overBlock = (e.target as HTMLElement).closest('[data-block-uuid]');
+      e.dataTransfer.dropEffect = overBlock ? "copy" : "none";
+     } else {
+      e.dataTransfer.dropEffect = "copy";
+     }
      // Hide native drag ghost — custom overlay takes over
      try {
       const blank = document.createElement("div");
