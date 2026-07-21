@@ -92,8 +92,9 @@ export default function App() {
  const [dragActiveData, setDragActiveData] = useState<DragData | null>(null);
  const [dragOverMinutes, setDragOverMinutes] = useState<number | null>(null);
  const dragOverRef = useRef<number | null>(null);
- const [dragStartMinutes, setDragStartMinutes] = useState<number | null>(null);
  const dragStartRef = useRef<number | null>(null);
+ const dragStartPixelRef = useRef<number | null>(null);
+ const [dragStartMinutes, setDragStartMinutes] = useState<number | null>(null);
  const [selectedBlockUuid, setSelectedBlockUuid] = useState<string | null>(null);
  const [createModalOpen, setCreateModalOpen] = useState(false);
  const [createModalRange, setCreateModalRange] = useState<{ start: number; end: number } | null>(null);
@@ -501,6 +502,7 @@ export default function App() {
     const start = Math.round(minutes / 5) * 5;
     console.log("[time-log] CBD dragStart position", { clientY: (ae as PointerEvent).clientY, relativeY: Math.round(relativeY), minutes: minutes.toFixed(1), start });
     dragStartRef.current = start;
+    dragStartPixelRef.current = relativeY;
     setDragStartMinutes(start);
    }
   }
@@ -510,12 +512,10 @@ export default function App() {
   const data = event.active.data.current as DragData | undefined;
   if (!data) return;
   const scrollEl = gridScrollRef.current;
-  if (!scrollEl || !event.active.rect.current.translated) return;
+  if (!scrollEl) return;
 
-  const gridRect = scrollEl.getBoundingClientRect();
-  const translated = event.active.rect.current.translated;
-  const pointerY = translated.top + translated.height / 2;
-  const relativeY = pointerY - gridRect.top + scrollEl.scrollTop;
+  const deltaY = event.delta.y;
+  const relativeY = (dragStartPixelRef.current ?? 0) + deltaY;
   const minutes = (relativeY / timeLogHourHeight) * 60;
   const snapped = Math.round(minutes / 5) * 5;
   setDragOverMinutes(Math.max(0, Math.min(23 * 60 + 55, snapped)));
@@ -544,6 +544,7 @@ export default function App() {
   dragOverRef.current = null;
   setDragStartMinutes(null);
   dragStartRef.current = null;
+  dragStartPixelRef.current = null;
   setResizeState(null);
   setMoveState(null);
   setCreateState(null);
