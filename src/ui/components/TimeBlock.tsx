@@ -18,8 +18,10 @@ function formatHM(minutes: number): string {
 
 export default function TimeBlock({ entry, style, displayStart, displayEnd, isSelected, onSelect, onDoubleClick, onDelete }: TimeBlockProps) {
   const actualHeight = parseFloat(String(style.height)) || 0;
-  const compact = actualHeight < 30;
-  const bodyStyle = compact ? { fontSize: "10px", lineHeight: 1.1 } : undefined;
+  // Dynamic font: scale with block height, clamped
+  const fontSize = Math.max(8, Math.min(14, actualHeight / 3.5));
+  const showActivity = actualHeight >= 22;
+  const bodyStyle: React.CSSProperties = { fontSize: `${fontSize}px`, lineHeight: 1.15 };
 
   const {
     attributes: bodyAttrs,
@@ -107,12 +109,14 @@ export default function TimeBlock({ entry, style, displayStart, displayEnd, isSe
         {...bodyListeners}
         {...bodyAttrs}
       >
-        {actualHeight >= 12 && (
+        {actualHeight >= 8 && (
           <>
             <span className="time-block-time">
               {formatHM(displayStart ?? entry.startMinutes)} - {formatHM(displayEnd ?? entry.endMinutes)}
             </span>
-            <span className="time-block-activity">{entry.activity}</span>
+            {showActivity && (
+              <span className="time-block-activity">{entry.activity}</span>
+            )}
             {entry.isClockEntry && (
               <span className="time-block-icon">🕐</span>
             )}
