@@ -488,6 +488,7 @@ export default function App() {
   const data = event.active.data.current as DragData | undefined;
   setDragActiveData(data ?? null);
   if (data?.type === "create-selection") {
+   console.log("[time-log] create-selection dragStart", { type: data?.type, hasActivator: !!event.activatorEvent });
    const scrollEl = gridScrollRef.current;
    if (scrollEl) {
     const gridRect = scrollEl.getBoundingClientRect();
@@ -522,6 +523,7 @@ export default function App() {
    const duration = data.endMinutes - data.startMinutes;
    setMoveState({ uuid: data.uuid, startMinutes: Math.max(0, Math.min(23 * 60 + 55 - duration, snapped)) });
   } else if (data.type === "create-selection") {
+   console.log("[time-log] create-selection dragMove", { dragOverMinutes, dragStartMinutes, snapped });
    if (dragOverMinutes !== null) {
     const start = dragStartMinutes ?? dragOverMinutes;
     const end = Math.max(start + 5, snapped);
