@@ -16,6 +16,8 @@ interface TimeLogViewProps {
  selectedBlockUuid: string | null;
  onSelectBlock: (uuid: string | null) => void;
  onDoubleClickBlock: (uuid: string) => void;
+ editingBlockUuid?: string | null;
+ onRenameBlock?: (uuid: string, name: string) => void;
  onDeleteBlock: (uuid: string) => void;
  onDayChange: (day: number) => void;
  nativeDragState?: { uuid: string; content: string; startMinutes: number | null } | null;
@@ -59,6 +61,8 @@ export default function TimeLogView({
  selectedBlockUuid,
  onSelectBlock,
  onDoubleClickBlock,
+ editingBlockUuid,
+ onRenameBlock,
  onDeleteBlock,
  onDayChange,
  nativeDragState,
@@ -159,6 +163,8 @@ export default function TimeLogView({
       selectedBlockUuid={selectedBlockUuid}
       onSelectBlock={onSelectBlock}
       onDoubleClickBlock={onDoubleClickBlock}
+      editingBlockUuid={editingBlockUuid}
+      onRenameBlock={onRenameBlock}
       onDeleteBlock={onDeleteBlock}
      />
     </div>

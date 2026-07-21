@@ -7,6 +7,8 @@ interface TimeBlockProps {
   displayStart?: number;
   displayEnd?: number;
   isSelected: boolean;
+  isEditing?: boolean;
+  onRename?: (uuid: string, name: string) => void;
   onSelect: (uuid: string) => void;
   onDoubleClick: (uuid: string) => void;
   onDelete: (uuid: string) => void;
@@ -16,7 +18,7 @@ function formatHM(minutes: number): string {
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
 
-export default function TimeBlock({ entry, style, displayStart, displayEnd, isSelected, onSelect, onDoubleClick, onDelete }: TimeBlockProps) {
+export default function TimeBlock({ entry, style, displayStart, displayEnd, isSelected, isEditing, onRename, onSelect, onDoubleClick, onDelete }: TimeBlockProps) {
   const actualHeight = parseFloat(String(style.height)) || 0;
   // Dynamic font: scale with block height, clamped
   const fontSize = Math.max(8, Math.min(14, actualHeight / 3.5));
@@ -111,11 +113,37 @@ export default function TimeBlock({ entry, style, displayStart, displayEnd, isSe
       >
         {actualHeight >= 8 && (
           <>
-            <span className="time-block-time">
-              {formatHM(displayStart ?? entry.startMinutes)} - {formatHM(displayEnd ?? entry.endMinutes)}
-            </span>
-            {showActivity && (
-              <span className="time-block-activity">{entry.activity}</span>
+            {isEditing ? (
+              <input
+                className="time-block-edit-input"
+                defaultValue={entry.activity}
+                autoFocus
+                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  try {
+                    const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+                    if (data.content) {
+                      (e.target as HTMLInputElement).value = data.content;
+                    }
+                  } catch { /* ignore */ }
+                }}
+                onBlur={(e) => onRename?.(entry.uuid, e.target.value.trim() || entry.activity)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") onRename?.(entry.uuid, (e.target as HTMLInputElement).value.trim() || entry.activity);
+                  if (e.key === "Escape") onRename?.(entry.uuid, entry.activity);
+                }}
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <>
+                <span className="time-block-time">
+                  {formatHM(displayStart ?? entry.startMinutes)} - {formatHM(displayEnd ?? entry.endMinutes)}
+                </span>
+                {showActivity && (
+                  <span className="time-block-activity">{entry.activity}</span>
+                )}
+              </>
             )}
             {entry.isClockEntry && (
               <span className="time-block-icon">🕐</span>

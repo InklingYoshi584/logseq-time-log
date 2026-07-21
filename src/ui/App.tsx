@@ -88,6 +88,7 @@ export default function App() {
  const [createModalName, setCreateModalName] = useState("");
  const [timeLogHourHeight, setTimeLogHourHeight] = useState(60);
  const [resizeState, setResizeState] = useState<{ uuid: string; type: "top" | "bottom"; minutes: number } | null>(null);
+ const [editingBlockUuid, setEditingBlockUuid] = useState<string | null>(null);
  const [createState, setCreateState] = useState<{ startMinutes: number; endMinutes: number } | null>(null);
  const [moveState, setMoveState] = useState<{ uuid: string; startMinutes: number } | null>(null);
  const [nativeDragState, setNativeDragState] = useState<{ uuid: string; content: string; startMinutes: number | null } | null>(null);
@@ -583,20 +584,35 @@ export default function App() {
     if (selectedDay === null) return;
     const startMinutes = startMinutesValue ?? computeDefaultMinutes();
     const endMinutes = overMinutes !== null ? Math.max(startMinutes + 5, Math.min(24 * 60, overMinutes)) : startMinutes + 25;
-    setCreateModalRange({ start: startMinutes, end: endMinutes });
-    setCreateModalName("");
-    setCreateModalOpen(true);
+    // Create entry directly and open inline edit
+    const pageName = await resolveJournalPageName(selectedDay)
+     ?? `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`;
+    const blockUuid = await findOrCreateTimeLogBlock(pageName);
+    const result = await logseq.Editor.insertBlock(blockUuid, `${formatHM(startMinutes)} - ${formatHM(endMinutes)}`, { sibling: false });
+    const newUuid = (result as { uuid?: string })?.uuid;
+    await refreshTimeLog();
+    if (newUuid) setEditingBlockUuid(newUuid);
     break;
    }
   }
  }, [selectedDay]);
 
  const handleDoubleClickBlock = useCallback((uuid: string) => {
-  const entry = timeLogEntries.find(e => e.uuid === uuid);
-  if (entry?.todoUuid) {
-   logseq.Editor.scrollToBlockInPage("", entry.todoUuid);
+  setEditingBlockUuid(uuid);
+ }, []);
+
+ const handleRenameBlock = useCallback(async (uuid: string, newName: string) => {
+  const block = await logseq.Editor.getBlock(uuid);
+  if (!block) return;
+  const content = String(block.content ?? "");
+  const match = content.match(/^((\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2}))\s+(.*)$/);
+  if (match) {
+   const timePart = match[1];
+   await logseq.Editor.updateBlock(uuid, `${timePart} ${newName}`);
   }
- }, [timeLogEntries]);
+  setEditingBlockUuid(null);
+  refreshTimeLog();
+ }, [refreshTimeLog]);
 
  /* ── Journal (left) content ── */
  const journalContent = selectedDay !== null ? (
@@ -672,6 +688,8 @@ export default function App() {
    selectedBlockUuid={selectedBlockUuid}
    onSelectBlock={setSelectedBlockUuid}
    onDoubleClickBlock={handleDoubleClickBlock}
+   editingBlockUuid={editingBlockUuid}
+   onRenameBlock={handleRenameBlock}
    onDeleteBlock={deleteTimeLogEntry}
    onDayChange={handleSelectDay}
    onDropTodo={handleDropOnTimeLog}

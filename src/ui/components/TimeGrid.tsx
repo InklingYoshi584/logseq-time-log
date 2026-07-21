@@ -14,6 +14,8 @@ interface TimeGridProps {
  selectedBlockUuid: string | null;
  onSelectBlock: (uuid: string | null) => void;
  onDoubleClickBlock: (uuid: string) => void;
+ editingBlockUuid?: string | null;
+ onRenameBlock?: (uuid: string, name: string) => void;
  onDeleteBlock: (uuid: string) => void;
  onDropTodo?: (uuid: string, startMinutes: number) => void;
  onDragOverGrid?: (minutes: number | null) => void;
@@ -128,6 +130,8 @@ export default function TimeGrid({
  selectedBlockUuid,
  onSelectBlock,
  onDoubleClickBlock,
+ editingBlockUuid,
+ onRenameBlock,
  onDeleteBlock,
  onDropTodo,
  onDragOverGrid,
@@ -309,6 +313,8 @@ export default function TimeGrid({
         zIndex: BLOCK_Z_INDEX,
        }}
        isSelected={selectedBlockUuid === entry.uuid}
+       isEditing={editingBlockUuid === entry.uuid}
+       onRename={onRenameBlock}
        onSelect={onSelectBlock}
        onDoubleClick={onDoubleClickBlock}
        onDelete={onDeleteBlock}
@@ -338,8 +344,8 @@ export default function TimeGrid({
        position: "absolute",
        top: (createState.startMinutes / 60) * hourHeight,
        height: Math.max(2, ((createState.endMinutes - createState.startMinutes) / 60) * hourHeight),
-       left: "2%",
-       width: "96%",
+       left: 0,
+       width: "100%",
        zIndex: 100,
        pointerEvents: "none",
        opacity: 0.75,

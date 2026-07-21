@@ -1396,3 +1396,32 @@ html, body, #root {
 .time-create-modal-create:hover {
   opacity: 0.85;
 }
+.time-block-edit-input {
+  flex: 1;
+  min-width: 0;
+  padding: 1px 4px;
+  border: 1px solid #fff;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.2);
+  color: inherit;
+  font-size: inherit;
+  font-family: var(--font);
+  outline: none;
+}
+.time-block-edit-input:focus {
+  background: rgba(255,255,255,0.35);
+  border-color: #fff;
+}
+.time-block--event .time-block-edit-input {
+  background: rgba(0,0,0,0.1);
+  border-color: rgba(0,0,0,0.3);
+  color: inherit;
+}
+.time-block--event .time-block-edit-input:focus {
+  background: rgba(0,0,0,0.15);
+}
+.time-block--clock .time-block-edit-input {
+  background: rgba(0,0,0,0.08);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
