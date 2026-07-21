@@ -208,10 +208,6 @@ export default function TimeGrid({
     onDragOver={(e) => {
      e.preventDefault();
      e.dataTransfer.dropEffect = "copy";
-     // Check if Shift is held for rename mode
-     if (e.shiftKey) {
-      e.dataTransfer.dropEffect = "move";
-     }
      // Hide native drag ghost — custom overlay takes over
      try {
       const blank = document.createElement("div");
