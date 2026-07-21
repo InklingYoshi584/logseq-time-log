@@ -632,9 +632,22 @@ export default function App() {
    if (todoUuid) {
     // Shift-drop: replace entire content with just the reference
     await logseq.Editor.updateBlock(uuid, `${timePart} ((${todoUuid}))`);
-    updateEntryLocal(uuid, { activity: "", todoUuid });
-    // Refresh to get updated entry with todoUuid
     await refreshTimeLog();
+    // Resolve TODO name for display
+    let resolvedName = "";
+    try {
+     const refBlock = await logseq.Editor.getBlock(todoUuid);
+     if (refBlock?.content) {
+      let c = String(refBlock.content);
+      c = c.replace(/:LOGBOOK:[\s\S]*?:END:/gi, "");
+      c = c.replace(/^\w+::\s.*$/gm, "");
+      c = c.replace(/^(TODO|DOING|DONE|NOW|LATER|WAITING)\s+/i, "");
+      c = c.replace(/^\[#(A|B|C)\]\s*/i, "");
+      resolvedName = c.trim();
+     }
+    } catch { /* use empty */ }
+    updateEntryLocal(uuid, { activity: resolvedName, todoUuid });
+    // Refresh to get updated entry with todoUuid
    } else {
     // Inline rename: just update the name
     const refMatch = oldRest.match(/\(\(([a-f0-9-]+)\)\)/);
