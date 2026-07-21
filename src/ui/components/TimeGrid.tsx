@@ -219,6 +219,20 @@ export default function TimeGrid({
   <div
    className="time-grid"
    ref={gridContainerRef}
+   onMouseDownCapture={(e) => {
+    if (e.button !== 0) return;
+    const gridRect = e.currentTarget.getBoundingClientRect();
+    const scrollEl = (e.currentTarget as HTMLElement).closest('.time-grid-scroll') as HTMLElement | null;
+    const st = scrollEl?.scrollTop ?? 0;
+    const ry = e.clientY - gridRect.top + st;
+    const mins = (ry / hourHeight) * 60;
+    const snap = Math.round(mins / 5) * 5;
+    console.log("[time-log] mousedown", JSON.stringify({
+     clientY: e.clientY, gridTop: Math.round(gridRect.top), scrollTop: st,
+     relativeY: Math.round(ry), hourHeight, minutes: mins.toFixed(1), snapped: snap,
+     time: `${String(Math.floor(snap / 60)).padStart(2, "0")}:${String(snap % 60).padStart(2, "0")}`
+    }));
+   }}
    style={{ minHeight: totalHeight }}
   >
    <HourMarkers hourHeight={hourHeight} />
