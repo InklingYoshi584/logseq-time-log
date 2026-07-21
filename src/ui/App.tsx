@@ -557,9 +557,10 @@ export default function App() {
   setResizeState(null);
   setMoveState(null);
   setCreateState(null);
-  if (!data || !over) return;
+  if (!data) return;
+  if (data.type !== "create-selection" && !over) return;
 
-  const overId = String(over.id);
+  const overId = over ? String(over.id) : "";
 
   switch (data.type) {
    case "time-block": {
