@@ -203,7 +203,7 @@ export default function TimeGrid({
    <CurrentTimeLine top={currentTimeTop} label={formatHM(nowMinutes)} />
 
    <div
-    className={`time-grid-zone${isOver ? " time-grid-zone--over" : ""}${nativeDragState?.shiftKey ? " time-grid-zone--shift" : ""}`}
+    className={`time-grid-zone${isOver ? " time-grid-zone--over" : ""}`}
     ref={setDroppableRef}
     onDragOver={(e) => {
      e.preventDefault();
