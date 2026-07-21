@@ -588,7 +588,7 @@ export default function App() {
     break;
    }
    case "create-selection": {
-    console.log("[time-log] CBD dragEnd", { dragStartRef: dragStartRef.current, dragOverRef: dragOverRef.current });
+    console.log("[time-log] CBD dragEnd", { startMinutesValue, overMinutes });
     if (selectedDay === null) return;
     const startMinutes = startMinutesValue ?? computeDefaultMinutes();
     const endMinutes = overMinutes !== null ? Math.max(startMinutes + 5, Math.min(24 * 60, overMinutes)) : startMinutes + 25;
@@ -596,10 +596,12 @@ export default function App() {
     const pageName = await resolveJournalPageName(selectedDay)
      ?? `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`;
     const blockUuid = await findOrCreateTimeLogBlock(pageName);
-    const result = await logseq.Editor.insertBlock(blockUuid, `${formatHM(startMinutes)} - ${formatHM(endMinutes)} Name`, { sibling: false });
-    const newUuid = (result as { uuid?: string })?.uuid;
+    await logseq.Editor.insertBlock(blockUuid, `${formatHM(startMinutes)} - ${formatHM(endMinutes)} Name`, { sibling: false });
     await refreshTimeLog();
-    if (newUuid) setEditingBlockUuid(newUuid);
+    // Find the newly created entry and open inline edit
+    const entries = await queryTimeLogEntries(selectedDay);
+    const newEntry = entries.find(e => e.startMinutes === startMinutes && e.endMinutes === endMinutes && !e.isClockEntry);
+    if (newEntry) setEditingBlockUuid(newEntry.uuid);
     break;
    }
   }
