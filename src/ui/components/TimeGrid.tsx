@@ -302,8 +302,8 @@ export default function TimeGrid({
       <TimeBlock
        key={entry.uuid}
        entry={entry}
-       displayStart={resizeState?.uuid === entry.uuid ? displayStart : undefined}
-       displayEnd={resizeState?.uuid === entry.uuid ? displayEnd : undefined}
+       displayStart={(resizeState?.uuid === entry.uuid || moveState?.uuid === entry.uuid) ? displayStart : undefined}
+       displayEnd={(resizeState?.uuid === entry.uuid || moveState?.uuid === entry.uuid) ? displayEnd : undefined}
        style={{
         position: "absolute",
         top,

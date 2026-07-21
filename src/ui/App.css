@@ -1399,14 +1399,15 @@ html, body, #root {
 .time-block-edit-input {
   flex: 1;
   min-width: 0;
-  padding: 1px 4px;
-  border: 1px solid #fff;
-  border-radius: 2px;
+  padding: 2px 6px;
+  border: 2px solid #fff;
+  border-radius: 3px;
   background: rgba(255,255,255,0.2);
   color: inherit;
   font-size: inherit;
   font-family: var(--font);
   outline: none;
+  height: 100%;
 }
 .time-block-edit-input:focus {
   background: rgba(255,255,255,0.35);

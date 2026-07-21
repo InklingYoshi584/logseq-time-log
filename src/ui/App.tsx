@@ -447,10 +447,18 @@ export default function App() {
 
  const createTimeLogEntryLoc = useCallback(async (todoUuid: string, startMinutes: number, endMinutes: number) => {
   if (selectedDay === null) return;
+  // Resolve reference chain: if block is itself a ((ref)), use the original UUID
+  let resolvedUuid = todoUuid;
+  try {
+   const sourceBlock = await logseq.Editor.getBlock(todoUuid);
+   const rawContent = typeof sourceBlock?.content === "string" ? sourceBlock.content : "";
+   const refMatch = rawContent.match(/^\(\(([a-f0-9-]+)\)\)/);
+   if (refMatch) resolvedUuid = refMatch[1];
+  } catch { /* use original uuid */ }
   const pageName = await resolveJournalPageName(selectedDay)
    ?? `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`;
   const blockUuid = await findOrCreateTimeLogBlock(pageName);
-  await logseq.Editor.insertBlock(blockUuid, `${formatHM(startMinutes)} - ${formatHM(endMinutes)} ((${todoUuid}))`, { sibling: false });
+  await logseq.Editor.insertBlock(blockUuid, `${formatHM(startMinutes)} - ${formatHM(endMinutes)} ((${resolvedUuid}))`, { sibling: false });
   refreshTimeLog();
  }, [selectedDay, refreshTimeLog]);
 
