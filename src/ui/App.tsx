@@ -633,10 +633,8 @@ export default function App() {
    const timePart = match[1];
    const oldRest = match[4];
    if (todoUuid) {
-    // Shift-drop: only update reference, keep existing activity name
-    const nameWithoutRef = oldRest.replace(/\(\([a-f0-9-]+\)\)/g, "").trim();
-    const finalName = (nameWithoutRef && nameWithoutRef !== "Name") ? nameWithoutRef : newName;
-    await logseq.Editor.updateBlock(uuid, `${timePart} ${finalName} ((${todoUuid}))`);
+    // Shift-drop: replace entire content with just the reference
+    await logseq.Editor.updateBlock(uuid, `${timePart} ((${todoUuid}))`);
     // Refresh to get updated entry with todoUuid
     await refreshTimeLog();
    } else {

@@ -129,10 +129,10 @@ export default function TimeBlock({ entry, style, displayStart, displayEnd, isSe
                     }
                   } catch { /* ignore */ }
                 }}
-                onBlur={(e) => onRename?.(entry.uuid, e.target.value.trim() || entry.activity)}
+                onBlur={(e) => onRename?.(entry.uuid, e.target.value.trim())}
                 onKeyDown={(e) => {
                   e.stopPropagation();
-                  if (e.key === "Enter") onRename?.(entry.uuid, (e.target as HTMLInputElement).value.trim() || entry.activity);
+                  if (e.key === "Enter") onRename?.(entry.uuid, (e.target as HTMLInputElement).value.trim());
                   if (e.key === "Escape") onRename?.(entry.uuid, entry.activity);
                 }}
                 onClick={(e) => e.stopPropagation()}
