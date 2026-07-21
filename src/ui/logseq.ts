@@ -877,18 +877,6 @@ export async function queryTimeLogEntries(journalDay: number): Promise<TimeLogEn
   }
  }
 
- // Resolve activity names from references for empty activities
- for (const entry of entries) {
-  if (!entry.activity && entry.todoUuid) {
-   try {
-    const refBlock = await logseq.Editor.getBlock(entry.todoUuid);
-    if (refBlock?.content) {
-     entry.activity = cleanContent(String(refBlock.content)) || entry.activity;
-    }
-   } catch { /* keep empty */ }
-  }
- }
-
  return entries;
 }
 
