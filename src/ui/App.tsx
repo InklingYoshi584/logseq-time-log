@@ -196,7 +196,43 @@ export default function App() {
   }
  }, [currentYear, loadYear]);
 
- const handleRefresh = useCallback(async () => {
+ 
+  const syncToLogbook = async (entry: { todoUuid?: string; startMinutes: number; endMinutes: number }, oldStart?: number) => {
+    if (!entry.todoUuid || !selectedDay) return;
+    try {
+      const block = await logseq.Editor.getBlock(entry.todoUuid);
+      if (!block?.content) return;
+      const content = String(block.content);
+      const y = Math.floor(selectedDay / 10000);
+      const m = Math.floor((selectedDay % 10000) / 100);
+      const d = selectedDay % 100;
+      const dateStr = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const sh = String(Math.floor(entry.startMinutes / 60)).padStart(2, "0");
+      const sm = String(entry.startMinutes % 60).padStart(2, "0");
+      const eh = String(Math.floor(entry.endMinutes / 60)).padStart(2, "0");
+      const em = String(entry.endMinutes % 60).padStart(2, "0");
+      const durH = String(Math.floor((entry.endMinutes - entry.startMinutes) / 60)).padStart(2, "0");
+      const durM = String((entry.endMinutes - entry.startMinutes) % 60).padStart(2, "0");
+      const newClock = `CLOCK: [${dateStr} ${sh}:${sm}:00]--[${dateStr} ${eh}:${em}:00] =>  ${durH}:${durM}:00`;
+      let newContent;
+      if (oldStart !== undefined) {
+        const osh = String(Math.floor(oldStart / 60)).padStart(2, "0");
+        const osm = String(oldStart % 60).padStart(2, "0");
+        const re = new RegExp(`CLOCK:\\\\s*\\\\[.*?${osh}:${osm}:\\\\d{2}\\\\].*`, "g");
+        newContent = content.replace(re, newClock);
+      } else {
+        const lbMatch = content.match(/:LOGBOOK:([\\s\\S]*?):END:/i);
+        if (lbMatch) {
+          newContent = content.replace(/:LOGBOOK:([\\s\\S]*?):END:/i, `:LOGBOOK:$1${newClock}\\n:END:`);
+        } else {
+          newContent = content + `\\n:LOGBOOK:\\n${newClock}\\n:END:`;
+        }
+      }
+      await logseq.Editor.updateBlock(entry.todoUuid, newContent);
+    } catch { /* ignore */ }
+  };
+
+  const handleRefresh = useCallback(async () => {
   await initYears();
   if (activeTab === "timelog" && selectedDay !== null) {
    const entries = await queryTimeLogEntries(selectedDay);
@@ -473,6 +509,7 @@ export default function App() {
   await logseq.Editor.createPage(pageName, {}, { journal: true, createFirstBlock: false });
   const blockUuid = await findOrCreateTimeLogBlock(pageName);
   await logseq.Editor.insertBlock(blockUuid, `${formatHM(startMinutes)} - ${formatHM(endMinutes)} ((${resolvedUuid}))`, { sibling: false });
+  syncToLogbook({ todoUuid: resolvedUuid, startMinutes, endMinutes });
   await refreshTimeLog();
  }, [selectedDay, refreshTimeLog]);
 
@@ -489,6 +526,7 @@ export default function App() {
  const deleteTimeLogEntry = useCallback(async (uuid: string) => {
   if (!uuid.startsWith("clock-")) {
    await logseq.Editor.removeBlock(uuid);
+  { const e = timeLogEntriesRef.current.find(en => en.uuid === uuid); if (e?.todoUuid) { try { const b = await logseq.Editor.getBlock(e.todoUuid); if (b?.content) { const sh = String(Math.floor(e.startMinutes/60)).padStart(2,"0"); const sm = String(e.startMinutes%60).padStart(2,"0"); const re = new RegExp(`CLOCK:\\\\s*\\\\[.*?${sh}:${sm}:\\\\d{2}\\\\].*\\\\n?`,"g"); await logseq.Editor.updateBlock(e.todoUuid, String(b.content).replace(re,"")); } } catch {} } }
   } else {
    // CLOCK entry: find the original block and remove the CLOCK line
    const entry = timeLogEntriesRef.current.find(e => e.uuid === uuid);
@@ -607,6 +645,7 @@ export default function App() {
     const newEnd = newStart + duration;
     await updateTimeLogEntry(data.uuid, newStart, newEnd);
     updateEntryLocal(data.uuid, { startMinutes: newStart, endMinutes: newEnd });
+  { const e = timeLogEntriesRef.current.find(en => en.uuid === data.uuid); if (e?.todoUuid) syncToLogbook({ ...e, startMinutes: newStart, endMinutes: newEnd }, data.startMinutes); }
     break;
    }
    case "time-block-top": {
@@ -615,6 +654,7 @@ export default function App() {
     if (newStart >= data.endMinutes - 5) return;
     await updateTimeLogEntry(data.uuid, newStart, data.endMinutes);
     updateEntryLocal(data.uuid, { startMinutes: newStart });
+  { const e = timeLogEntriesRef.current.find(en => en.uuid === data.uuid); if (e?.todoUuid && data.endMinutes) syncToLogbook({ ...e, startMinutes: newStart, endMinutes: data.endMinutes }, data.startMinutes); }
     break;
    }
    case "time-block-bottom": {
@@ -623,6 +663,7 @@ export default function App() {
     if (newEnd <= data.startMinutes + 5) return;
     await updateTimeLogEntry(data.uuid, data.startMinutes, newEnd);
     updateEntryLocal(data.uuid, { endMinutes: newEnd });
+  { const e = timeLogEntriesRef.current.find(en => en.uuid === data.uuid); if (e?.todoUuid && data.startMinutes !== undefined) syncToLogbook({ ...e, startMinutes: data.startMinutes, endMinutes: newEnd }, data.startMinutes); }
     break;
    }
    case "create-selection": {
