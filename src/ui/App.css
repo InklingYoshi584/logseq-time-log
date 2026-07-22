@@ -1050,7 +1050,8 @@ html, body, #root {
 .time-grid-marker--hour::after {
   top: 50%;
   height: 1px;
-  background: var(--border);
+  background: var(--text-muted);
+  opacity: 0.5;
 }
 .time-grid-marker--half {
   color: var(--text-muted);
@@ -1059,16 +1060,13 @@ html, body, #root {
   top: 50%;
   height: 1px;
   background: var(--border);
-  opacity: 0.5;
-  border-top: 1px dashed var(--border);
-  background: transparent;
+  opacity: 0.6;
 }
 .time-grid-marker--quarter::after {
   top: 50%;
   height: 1px;
-  border-top: 1px dotted var(--border);
-  opacity: 0.3;
-  background: transparent;
+  background: var(--border);
+  opacity: 0.45;
 }
 
 /* ── Time Grid Zone ── */
@@ -1105,7 +1103,6 @@ html, body, #root {
   font-weight: 700;
   font-family: var(--font-mono);
   color: color-mix(in srgb, var(--danger, #f87171) 60%, transparent);
-  background: var(--bg-primary);
   padding: 0 4px;
   white-space: nowrap;
   z-index: 4;
