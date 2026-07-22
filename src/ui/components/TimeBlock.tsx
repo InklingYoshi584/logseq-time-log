@@ -1,4 +1,5 @@
 import { useDraggable } from "@dnd-kit/core";
+import { useCallback, useRef } from "react";
 import type { TimeLogEntry } from "../types";
 
 interface TimeBlockProps {
@@ -8,6 +9,7 @@ interface TimeBlockProps {
   displayEnd?: number;
   isSelected: boolean;
   isEditing?: boolean;
+  onClickBlock?: (uuid: string) => void;
   onRename?: (uuid: string, name: string) => void;
   onSelect: (uuid: string) => void;
   onDoubleClick: (uuid: string) => void;
@@ -18,12 +20,17 @@ function formatHM(minutes: number): string {
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
 
-export default function TimeBlock({ entry, style, displayStart, displayEnd, isSelected, isEditing, onRename, onSelect, onDoubleClick, onDelete }: TimeBlockProps) {
+export default function TimeBlock({
+  entry, style, displayStart, displayEnd, isSelected, isEditing,
+  onClickBlock, onRename, onSelect, onDoubleClick, onDelete,
+}: TimeBlockProps) {
   const actualHeight = parseFloat(String(style.height)) || 0;
   // Dynamic font: scale with block height, clamped
   const fontSize = Math.max(8, Math.min(14, actualHeight / 3.5));
   const showActivity = actualHeight >= 22;
   const bodyStyle: React.CSSProperties = { fontSize: `${fontSize}px`, lineHeight: 1.15 };
+
+  const isOpenEnded = entry.endMinutes === null;
 
   const {
     attributes: bodyAttrs,
@@ -31,11 +38,15 @@ export default function TimeBlock({ entry, style, displayStart, displayEnd, isSe
     setNodeRef: bodyRef,
   } = useDraggable({
     id: entry.uuid,
+    disabled: isOpenEnded,
     data: {
       type: "time-block",
       uuid: entry.uuid,
       startMinutes: entry.startMinutes,
       endMinutes: entry.endMinutes,
+      isScheduled: entry.isScheduled,
+      isScheduledStart: entry.isScheduledStart,
+      isScheduledEnd: entry.isScheduledEnd,
     },
   });
 
@@ -50,6 +61,9 @@ export default function TimeBlock({ entry, style, displayStart, displayEnd, isSe
       uuid: entry.uuid,
       startMinutes: entry.startMinutes,
       endMinutes: entry.endMinutes,
+      isScheduled: entry.isScheduled,
+      isScheduledStart: entry.isScheduledStart,
+      isScheduledEnd: entry.isScheduledEnd,
     },
   });
 
@@ -59,13 +73,33 @@ export default function TimeBlock({ entry, style, displayStart, displayEnd, isSe
     setNodeRef: bottomRef,
   } = useDraggable({
     id: `${entry.uuid}-bottom`,
+    disabled: isOpenEnded,
     data: {
       type: "time-block-bottom",
       uuid: entry.uuid,
       startMinutes: entry.startMinutes,
       endMinutes: entry.endMinutes,
+      isScheduled: entry.isScheduled,
+      isScheduledStart: entry.isScheduledStart,
+      isScheduledEnd: entry.isScheduledEnd,
     },
   });
+
+  // Click vs drag detection for open-ended blocks
+  const pointerStartRef = useRef({ x: 0, y: 0 });
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    pointerStartRef.current = { x: e.clientX, y: e.clientY };
+  }, []);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    if (!isOpenEnded || !onClickBlock) return;
+    const dx = e.clientX - pointerStartRef.current.x;
+    const dy = e.clientY - pointerStartRef.current.y;
+    if (Math.abs(dx) < 3 && Math.abs(dy) < 3) {
+      onClickBlock(entry.uuid);
+    }
+  }, [isOpenEnded, onClickBlock, entry.uuid]);
 
   let colorClass: string;
   if (entry.isClockEntry) {
@@ -81,9 +115,22 @@ export default function TimeBlock({ entry, style, displayStart, displayEnd, isSe
     colorClass,
     isSelected ? "time-block--selected" : "",
     actualHeight < 15 ? "time-block--thin" : "",
+    entry.isScheduled ? "time-block--scheduled" : "",
   ]
     .filter(Boolean)
     .join(" ");
+
+  const timeLabel = isOpenEnded
+    ? `${formatHM(displayStart ?? entry.startMinutes)} - ...`
+    : `${formatHM(displayStart ?? entry.startMinutes)} - ${formatHM(displayEnd ?? entry.endMinutes ?? 0)}`;
+
+  const showErrorBadge = entry.errorMinutes !== undefined && entry.errorMinutes !== 0;
+  let errorBadgeLabel = "";
+  if (showErrorBadge) {
+    const sign = entry.errorMinutes! > 0 ? "+" : "";
+    const abs = Math.abs(entry.errorMinutes!);
+    errorBadgeLabel = `(${sign}${abs})`;
+  }
 
   return (
     <div
@@ -109,6 +156,8 @@ export default function TimeBlock({ entry, style, displayStart, displayEnd, isSe
         className="time-block-body"
         ref={bodyRef}
         style={bodyStyle}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
         {...bodyListeners}
         {...bodyAttrs}
       >
@@ -140,10 +189,13 @@ export default function TimeBlock({ entry, style, displayStart, displayEnd, isSe
             ) : (
               <>
                 <span className="time-block-time">
-                  {formatHM(displayStart ?? entry.startMinutes)} - {formatHM(displayEnd ?? entry.endMinutes)}
+                  {timeLabel}
                 </span>
                 {showActivity && (
                   <span className="time-block-activity">{entry.activity}</span>
+                )}
+                {showErrorBadge && (
+                  <span className="time-block-error-badge">{errorBadgeLabel}</span>
                 )}
               </>
             )}
@@ -159,12 +211,14 @@ export default function TimeBlock({ entry, style, displayStart, displayEnd, isSe
           </>
         )}
       </div>
-      <div
-        className="time-block-handle time-block-handle--bottom"
-        ref={bottomRef}
-        {...bottomListeners}
-        {...bottomAttrs}
-      />
+      {!isOpenEnded && (
+        <div
+          className="time-block-handle time-block-handle--bottom"
+          ref={bottomRef}
+          {...bottomListeners}
+          {...bottomAttrs}
+        />
+      )}
       {isSelected && (
         <button
           className="time-block-delete"

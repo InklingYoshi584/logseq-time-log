@@ -29,6 +29,9 @@ import {
  queryTimeLogEntries,
  findOrCreateTimeLogBlock,
  updateTimeLogEntry,
+ parseTimeLogEntry,
+ snapTo5,
+ formatTimeLogEntry,
 } from "./logseq";
 import HeaderBar from "./components/HeaderBar";
 import TimeLogView from "./components/TimeLogView";
@@ -37,6 +40,7 @@ import CalendarView from "./components/CalendarView";
 import DayDetail from "./components/DayDetail";
 import PageTodos from "./components/PageTodos";
 import PageDetail from "./components/PageDetail";
+import QuickCreateDialog from "./components/QuickCreateDialog";
 
 const INITIAL_YEAR_WINDOW = 3;
 
@@ -94,6 +98,9 @@ export default function App() {
  const [createState, setCreateState] = useState<{ startMinutes: number; endMinutes: number } | null>(null);
  const [moveState, setMoveState] = useState<{ uuid: string; startMinutes: number } | null>(null);
  const [nativeDragState, setNativeDragState] = useState<{ uuid: string; content: string; startMinutes: number | null; shiftKey: boolean } | null>(null);
+ const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+ const autoClockRef = useRef<Set<string>>(new Set()); // entries already auto-processed
+ const manualMarkerRef = useRef<Map<string, string>>(new Map()); // original TODO markers
  const gridScrollRef = useRef<HTMLDivElement | null>(null);
 
  const handleClose = useCallback(() => {
@@ -198,7 +205,7 @@ export default function App() {
 
 
  const syncToLogbook = async (entry: { todoUuid?: string; startMinutes: number; endMinutes: number }, oldStart?: number) => {
-  if (!entry.todoUuid || !selectedDay) return;
+  if (!entry.todoUuid || !selectedDay || entry.endMinutes === null) return;
   try {
    const block = await logseq.Editor.getBlock(entry.todoUuid);
    if (!block?.content) return;
@@ -261,6 +268,62 @@ export default function App() {
   }
   /* eslint-enable react-hooks/set-state-in-effect */
  }, [activeTab, selectedDay]);
+
+ // Auto-clock: monitor scheduled entries
+ useEffect(() => {
+  if (activeTab !== "timelog" || timeLogEntries.length === 0) return;
+  const now = new Date();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  let timeoutId: ReturnType<typeof setTimeout>;
+  const process = async () => {
+   const processed = new Set(autoClockRef.current);
+   for (const entry of timeLogEntries) {
+    if (!entry.isScheduled || processed.has(entry.uuid)) continue;
+    // Entry starts now or past → auto-clock in
+    if (entry.isScheduledStart && nowMins >= entry.startMinutes) {
+     processed.add(entry.uuid);
+     if (entry.todoUuid) {
+      try {
+       const b = await logseq.Editor.getBlock(entry.todoUuid);
+       if (b?.content) {
+        const raw = String(b.content);
+        const markerMatch = raw.match(/^(TODO|DOING|DONE|NOW|LATER|WAITING)\s/i);
+        if (markerMatch && markerMatch[1] !== "DOING" && markerMatch[1] !== "DONE") {
+         manualMarkerRef.current.set(entry.todoUuid, markerMatch[1]);
+         await changeMarker(entry.todoUuid, "DOING");
+        }
+       }
+      } catch { /* skip */ }
+     }
+    }
+    // Entry ends now or past → auto-clock out
+    if (entry.isScheduledEnd && entry.endMinutes !== null && nowMins >= entry.endMinutes) {
+     processed.add(entry.uuid);
+     // Complete: remove parens, write CLOCK
+     const updated = { ...entry, isScheduled: false, isScheduledStart: false, isScheduledEnd: false };
+     const newContent = formatTimeLogEntry(updated);
+     await logseq.Editor.updateBlock(entry.uuid, newContent);
+     updateEntryLocal(entry.uuid, { isScheduled: false, isScheduledStart: false, isScheduledEnd: false });
+     if (entry.todoUuid && entry.endMinutes !== null) {
+      syncToLogbook({ todoUuid: entry.todoUuid, startMinutes: entry.startMinutes, endMinutes: entry.endMinutes });
+      // Restore original marker
+      const origMarker = manualMarkerRef.current.get(entry.todoUuid);
+      if (origMarker) {
+       await changeMarker(entry.todoUuid, origMarker);
+       manualMarkerRef.current.delete(entry.todoUuid);
+      }
+     }
+    }
+   }
+   autoClockRef.current = processed;
+   // Schedule next check: next 5-min boundary + 10s
+   const nextCheck = (Math.floor(nowMins / 5) + 1) * 5;
+   const delay = ((nextCheck - nowMins) * 60 + 10) * 1000;
+   timeoutId = setTimeout(process, Math.max(10000, delay));
+  };
+  timeoutId = setTimeout(process, 0);
+  return () => clearTimeout(timeoutId);
+ }, [activeTab, timeLogEntries, selectedDay]);
 
  /* ── Day selection ── */
  const handleSelectDay = useCallback(async (day: number) => {
@@ -494,7 +557,7 @@ export default function App() {
   setTimeLogEntries(prev => [...prev, entry]);
  }, []);
 
- const createTimeLogEntryLoc = useCallback(async (todoUuid: string, startMinutes: number, endMinutes: number) => {
+ const createTimeLogEntryLoc = useCallback(async (todoUuid: string, startMinutes: number, endMinutes: number, isFuture?: boolean) => {
   if (selectedDay === null) return;
   // Resolve reference chain: if block is itself a ((ref)), use the original UUID
   let resolvedUuid = todoUuid;
@@ -508,9 +571,19 @@ export default function App() {
    ?? `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`;
   await logseq.Editor.createPage(pageName, {}, { journal: true, createFirstBlock: false });
   const blockUuid = await findOrCreateTimeLogBlock(pageName);
-  await logseq.Editor.insertBlock(blockUuid, `${formatHM(startMinutes)} - ${formatHM(endMinutes)} ((${resolvedUuid}))`, { sibling: false });
-  syncToLogbook({ todoUuid: resolvedUuid, startMinutes, endMinutes });
-  if (selectedDay) setTimeout(() => queryDayTodos(selectedDay).then(setDayTodos), 150);
+  // Past drop → completed; future drop → scheduled
+  const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+  const scheduled = isFuture ?? (startMinutes > nowMins);
+  const content = formatTimeLogEntry({
+   uuid: "", startMinutes, endMinutes, activity: "", todoUuid: resolvedUuid,
+   isClockEntry: false, isScheduled: scheduled, isScheduledStart: scheduled,
+   isScheduledEnd: scheduled,
+  });
+  await logseq.Editor.insertBlock(blockUuid, content, { sibling: false });
+  if (!scheduled) {
+   syncToLogbook({ todoUuid: resolvedUuid, startMinutes, endMinutes });
+   if (selectedDay) setTimeout(() => queryDayTodos(selectedDay).then(setDayTodos), 150);
+  }
   await refreshTimeLog();
  }, [selectedDay, refreshTimeLog]);
 
@@ -520,7 +593,13 @@ export default function App() {
    ?? `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`;
   await logseq.Editor.createPage(pageName, {}, { journal: true, createFirstBlock: false });
   const blockUuid = await findOrCreateTimeLogBlock(pageName);
-  await logseq.Editor.insertBlock(blockUuid, `${formatHM(startMinutes)} - ${formatHM(endMinutes)} ${activity}`, { sibling: false });
+  const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+  const scheduled = startMinutes > nowMins;
+  const content = formatTimeLogEntry({
+   uuid: "", startMinutes, endMinutes, activity,
+   isClockEntry: false, isScheduled: scheduled, isScheduledStart: scheduled, isScheduledEnd: scheduled,
+  });
+  await logseq.Editor.insertBlock(blockUuid, content, { sibling: false });
   refreshTimeLog();
  }, [selectedDay, refreshTimeLog]);
 
@@ -544,8 +623,9 @@ export default function App() {
  }, [selectedDay, refreshTimeLog]);
 
  const handleDropOnTimeLog = useCallback(async (uuid: string, startMinutes: number) => {
-  const endMinutes = Math.min(24 * 60, startMinutes + 25);
-  await createTimeLogEntryLoc(uuid, startMinutes, endMinutes);
+  const endMinutes = Math.min(24 * 60, snapTo5(startMinutes + 25));
+  const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+  await createTimeLogEntryLoc(uuid, snapTo5(startMinutes), endMinutes, startMinutes > nowMins);
   setNativeDragState(null);
  }, [createTimeLogEntryLoc]);
 
@@ -628,44 +708,85 @@ export default function App() {
 
 
 
+  const shiftKey = (event.activatorEvent as PointerEvent)?.shiftKey ?? false;
   switch (data.type) {
    case "time-block": {
     if (!data.uuid || data.startMinutes === undefined || data.endMinutes === undefined) return;
     const duration = data.endMinutes - data.startMinutes;
-    const newStart = overMinutes !== null ? Math.max(0, Math.min(23 * 60 + 59 - duration, overMinutes)) : data.startMinutes;
+    const rawStart = overMinutes !== null ? Math.max(0, Math.min(23 * 60 + 59 - duration, overMinutes)) : data.startMinutes;
+    const newStart = snapTo5(rawStart);
     const newEnd = newStart + duration;
-    await updateTimeLogEntry(data.uuid, newStart, newEnd);
-    updateEntryLocal(data.uuid, { startMinutes: newStart, endMinutes: newEnd });
-    { const e = timeLogEntriesRef.current.find(en => en.uuid === data.uuid); if (e?.todoUuid) syncToLogbook({ ...e, startMinutes: newStart, endMinutes: newEnd }, data.startMinutes); } if (selectedDay) setTimeout(() => queryDayTodos(selectedDay).then(setDayTodos), 150);
+    const e = timeLogEntriesRef.current.find(en => en.uuid === data.uuid);
+    if (e?.isScheduled && !e.isScheduledStart && shiftKey) {
+     // Shift-resize start on in-progress scheduled → error
+     updateEntryLocal(data.uuid, { startMinutes: newStart, errorMinutes: newStart - data.startMinutes });
+     await updateTimeLogEntry(data.uuid, newStart, newEnd);
+    } else {
+     await updateTimeLogEntry(data.uuid, newStart, newEnd);
+     updateEntryLocal(data.uuid, { startMinutes: newStart, endMinutes: newEnd });
+     if (e?.todoUuid) syncToLogbook({ ...e, startMinutes: newStart, endMinutes: newEnd }, data.startMinutes);
+    }
+    if (selectedDay) setTimeout(() => queryDayTodos(selectedDay).then(setDayTodos), 150);
     break;
    }
    case "time-block-top": {
     if (!data.uuid || data.endMinutes === undefined) return;
-    const newStart = overMinutes !== null ? Math.max(0, Math.min(data.endMinutes - 5, overMinutes)) : (data.startMinutes ?? data.endMinutes - 25);
+    const rawStart = overMinutes !== null ? Math.max(0, Math.min(data.endMinutes - 5, overMinutes)) : (data.startMinutes ?? data.endMinutes - 25);
+    const newStart = snapTo5(rawStart);
     if (newStart >= data.endMinutes - 5) return;
     await updateTimeLogEntry(data.uuid, newStart, data.endMinutes);
     updateEntryLocal(data.uuid, { startMinutes: newStart });
-    { const e = timeLogEntriesRef.current.find(en => en.uuid === data.uuid); if (e?.todoUuid && data.endMinutes) syncToLogbook({ ...e, startMinutes: newStart, endMinutes: data.endMinutes }, data.startMinutes); } if (selectedDay) setTimeout(() => queryDayTodos(selectedDay).then(setDayTodos), 150);
+    const e = timeLogEntriesRef.current.find(en => en.uuid === data.uuid);
+    if (e?.isScheduled && shiftKey) {
+     updateEntryLocal(data.uuid, { startMinutes: newStart, errorMinutes: newStart - (data.startMinutes ?? 0) });
+    } else if (e?.todoUuid && data.endMinutes) {
+     syncToLogbook({ ...e, startMinutes: newStart, endMinutes: data.endMinutes }, data.startMinutes);
+    }
+    if (selectedDay) setTimeout(() => queryDayTodos(selectedDay).then(setDayTodos), 150);
     break;
    }
    case "time-block-bottom": {
     if (!data.uuid || data.startMinutes === undefined) return;
-    const newEnd = overMinutes !== null ? Math.max(data.startMinutes + 5, Math.min(24 * 60, overMinutes)) : (data.endMinutes ?? data.startMinutes + 25);
+    const rawEnd = overMinutes !== null ? Math.max(data.startMinutes + 5, Math.min(24 * 60, overMinutes)) : (data.endMinutes ?? data.startMinutes + 25);
+    const newEnd = snapTo5(rawEnd);
     if (newEnd <= data.startMinutes + 5) return;
-    await updateTimeLogEntry(data.uuid, data.startMinutes, newEnd);
-    updateEntryLocal(data.uuid, { endMinutes: newEnd });
-    { const e = timeLogEntriesRef.current.find(en => en.uuid === data.uuid); if (e?.todoUuid && data.startMinutes !== undefined) syncToLogbook({ ...e, startMinutes: data.startMinutes, endMinutes: newEnd }, data.startMinutes); } if (selectedDay) setTimeout(() => queryDayTodos(selectedDay).then(setDayTodos), 150);
+    const e = timeLogEntriesRef.current.find(en => en.uuid === data.uuid);
+    const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+    if (e?.isScheduled) {
+     // Scheduled: shift-resize → update plan if > now, else error + complete
+     if (newEnd > nowMins && !shiftKey) {
+      // Just update planned end time
+      await updateTimeLogEntry(data.uuid, data.startMinutes, newEnd);
+      updateEntryLocal(data.uuid, { endMinutes: newEnd });
+     } else {
+      // Complete with error
+      const err = newEnd - (data.endMinutes ?? data.startMinutes + 25);
+      updateEntryLocal(data.uuid, { endMinutes: newEnd, isScheduled: false, isScheduledStart: false, isScheduledEnd: false, errorMinutes: err });
+      await updateTimeLogEntry(data.uuid, data.startMinutes, newEnd);
+      if (e?.todoUuid && data.endMinutes) syncToLogbook({ ...e, startMinutes: data.startMinutes, endMinutes: newEnd }, data.startMinutes);
+     }
+    } else {
+     await updateTimeLogEntry(data.uuid, data.startMinutes, newEnd);
+     updateEntryLocal(data.uuid, { endMinutes: newEnd });
+     { if (e?.todoUuid && data.startMinutes !== undefined) syncToLogbook({ ...e, startMinutes: data.startMinutes, endMinutes: newEnd }, data.startMinutes); }
+    }
+    if (selectedDay) setTimeout(() => queryDayTodos(selectedDay).then(setDayTodos), 150);
     break;
    }
    case "create-selection": {
     if (selectedDay === null) return;
     const startMinutes = startMinutesValue ?? computeDefaultMinutes();
-    const endMinutes = overMinutes !== null ? Math.max(startMinutes + 5, Math.min(24 * 60, overMinutes)) : startMinutes + 25;
-    // Create entry directly and open inline edit
+    const endMinutes = snapTo5(overMinutes !== null ? Math.max(startMinutes + 5, Math.min(24 * 60, overMinutes)) : startMinutes + 25);
+    const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+    const scheduled = startMinutes > nowMins;
     const pageName = await resolveJournalPageName(selectedDay)
      ?? `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`;
     const blockUuid = await findOrCreateTimeLogBlock(pageName);
-    await logseq.Editor.insertBlock(blockUuid, `${formatHM(startMinutes)} - ${formatHM(endMinutes)} Name`, { sibling: false });
+    const content = formatTimeLogEntry({
+     uuid: "", startMinutes, endMinutes, activity: "Name",
+     isClockEntry: false, isScheduled: scheduled, isScheduledStart: scheduled, isScheduledEnd: scheduled,
+    });
+    await logseq.Editor.insertBlock(blockUuid, content, { sibling: false });
     await refreshTimeLog();
     const entries = await queryTimeLogEntries(selectedDay);
     const newEntry = entries.find(e => e.startMinutes === startMinutes && e.endMinutes === endMinutes && !e.isClockEntry);
@@ -687,38 +808,66 @@ export default function App() {
   const block = await logseq.Editor.getBlock(uuid);
   if (!block) return;
   const content = String(block.content ?? "");
-  const match = content.match(/^((\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2}))\s+(.*)$/);
-  if (match) {
-   const timePart = match[1];
-   const oldRest = match[4];
-   if (todoUuid) {
-    // Shift-drop: replace entire content with just the reference
-    await logseq.Editor.updateBlock(uuid, `${timePart} ((${todoUuid}))`);
-    await refreshTimeLog();
-    // Resolve TODO name for display
-    let resolvedName = "";
-    try {
-     const refBlock = await logseq.Editor.getBlock(todoUuid);
-     if (refBlock?.content) {
-      let c = String(refBlock.content);
-      c = c.replace(/:LOGBOOK:[\s\S]*?:END:/gi, "");
-      c = c.replace(/^\w+::\s.*$/gm, "");
-      c = c.replace(/^(TODO|DOING|DONE|NOW|LATER|WAITING)\s+/i, "");
-      c = c.replace(/^\[#(A|B|C)\]\s*/i, "");
-      resolvedName = c.trim();
-     }
-    } catch { /* use empty */ }
-    updateEntryLocal(uuid, { activity: resolvedName, todoUuid });
-    // Refresh to get updated entry with todoUuid
-   } else {
-    // Inline rename: just update the name
-    await logseq.Editor.updateBlock(uuid, `${timePart} ${newName}`);
-    updateEntryLocal(uuid, { activity: newName, todoUuid: undefined });
-   }
+  const entry = parseTimeLogEntry(content, uuid, false);
+  if (!entry) return;
+  const updated = { ...entry };
+  if (todoUuid) {
+   updated.todoUuid = todoUuid;
+   // Resolve display name from TODO
+   try {
+    const refBlock = await logseq.Editor.getBlock(todoUuid);
+    if (refBlock?.content) {
+     let c = String(refBlock.content);
+     c = c.replace(/:LOGBOOK:[\s\S]*?:END:/gi, "");
+     c = c.replace(/^\w+::\s.*$/gm, "");
+     c = c.replace(/^(TODO|DOING|DONE|NOW|LATER|WAITING)\s+/i, "");
+     c = c.replace(/^\[#(A|B|C)\]\s*/i, "");
+     updated.activity = c.trim();
+    }
+   } catch { /* keep existing */ }
+  } else {
+   updated.activity = newName;
+   updated.todoUuid = undefined;
   }
+  const newContent = formatTimeLogEntry(updated);
+  await logseq.Editor.updateBlock(uuid, newContent);
+  updateEntryLocal(uuid, { activity: updated.activity, todoUuid: updated.todoUuid });
   setEditingBlockUuid(null);
  }, [refreshTimeLog, updateEntryLocal]);
 
+ const handleClickBlock = useCallback(async (uuid: string) => {
+  // Close open-ended block: set endMinutes to current time
+  const e = timeLogEntriesRef.current.find(en => en.uuid === uuid);
+  if (!e || e.endMinutes !== null) return;
+  const nowMins = snapTo5(new Date().getHours() * 60 + new Date().getMinutes());
+  const updated = { ...e, endMinutes: nowMins, isScheduled: false, isScheduledStart: false, isScheduledEnd: false };
+  const content = formatTimeLogEntry(updated);
+  await logseq.Editor.updateBlock(uuid, content);
+  updateEntryLocal(uuid, { endMinutes: nowMins });
+  if (e.todoUuid) syncToLogbook({ ...e, startMinutes: e.startMinutes, endMinutes: nowMins });
+  if (selectedDay) setTimeout(() => queryDayTodos(selectedDay).then(setDayTodos), 150);
+  await refreshTimeLog();
+ }, [selectedDay, refreshTimeLog, updateEntryLocal]);
+
+ const handleClickCurrentTime = useCallback(() => {
+  setQuickCreateOpen(true);
+ }, []);
+
+ const handleQuickCreate = useCallback(async (name: string, todoUuid?: string) => {
+  if (selectedDay === null) return;
+  const nowMins = snapTo5(new Date().getHours() * 60 + new Date().getMinutes());
+  const pageName = await resolveJournalPageName(selectedDay)
+   ?? `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`;
+  await logseq.Editor.createPage(pageName, {}, { journal: true, createFirstBlock: false });
+  const blockUuid = await findOrCreateTimeLogBlock(pageName);
+  const content = formatTimeLogEntry({
+   uuid: "", startMinutes: nowMins, endMinutes: null, activity: name, todoUuid,
+   isClockEntry: false, isScheduled: false, isScheduledStart: false, isScheduledEnd: false,
+  });
+  await logseq.Editor.insertBlock(blockUuid, content, { sibling: false });
+  await refreshTimeLog();
+  setQuickCreateOpen(false);
+ }, [selectedDay, refreshTimeLog]);
  /* ── Journal (left) content ── */
  const journalContent = selectedDay !== null ? (
   <div
@@ -796,6 +945,8 @@ export default function App() {
    editingBlockUuid={editingBlockUuid}
    onRenameBlock={handleRenameBlock}
    onDeleteBlock={deleteTimeLogEntry}
+   onClickBlock={handleClickBlock}
+   onClickCurrentTime={handleClickCurrentTime}
    onDayChange={handleSelectDay}
    onDropTodo={handleDropOnTimeLog}
    nativeDragState={nativeDragState}
@@ -861,6 +1012,12 @@ export default function App() {
       </div>
      </div>
     )}
+    <QuickCreateDialog
+     open={quickCreateOpen}
+     onClose={() => setQuickCreateOpen(false)}
+     onCreate={handleQuickCreate}
+     dayTodos={dayTodos.map(t => ({ uuid: t.uuid, content: t.content }))}
+    />
    </main>
   </div>
  );

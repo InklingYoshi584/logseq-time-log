@@ -27,10 +27,14 @@ export type ViewLayout = "single" | "split";
 export interface TimeLogEntry {
   uuid: string;
   startMinutes: number;
-  endMinutes: number;
+  endMinutes: number | null;
   activity: string;
   todoUuid?: string;
   isClockEntry: boolean;
+  isScheduled: boolean;
+  isScheduledStart: boolean;
+  isScheduledEnd: boolean;
+  errorMinutes?: number;
 }
 
 export type DragItemType =

@@ -1,6 +1,7 @@
-import { useRef, useMemo, useState, useEffect, useCallback } from "react";
+import { useRef, useMemo, useState, useEffect } from "react";
 import { useDroppable, useDraggable } from "@dnd-kit/core";
 import type { TimeLogEntry } from "../types";
+import { snapTo5 } from "../logseq";
 import TimeBlock from "./TimeBlock";
 import HourMarkers from "./HourMarkers";
 import CurrentTimeLine from "./CurrentTimeLine";
@@ -17,6 +18,8 @@ interface TimeGridProps {
  editingBlockUuid?: string | null;
  onRenameBlock?: (uuid: string, name: string, todoUuid?: string) => void;
  onDeleteBlock: (uuid: string) => void;
+ onClickBlock?: (uuid: string) => void;
+ onClickCurrentTime?: () => void;
  onDropTodo?: (uuid: string, startMinutes: number) => void;
  onDragOverGrid?: (minutes: number | null, shiftKey?: boolean) => void;
  nativeDragState?: { uuid: string; content: string; startMinutes: number | null; shiftKey: boolean } | null;
@@ -61,7 +64,7 @@ function computeLayout(entries: TimeLogEntry[]): LayoutItem[] {
   // Check all prior entries for overlap
   for (const prev of sorted) {
    if (prev.uuid === entry.uuid) break;
-   if (prev.endMinutes > entry.startMinutes) {
+   if ((prev.endMinutes ?? 24 * 60) > entry.startMinutes) {
     usedCols.add(columnMap.get(prev.uuid)!);
    }
   }
@@ -77,7 +80,7 @@ function computeLayout(entries: TimeLogEntry[]): LayoutItem[] {
   const neighbors: string[] = [];
   for (const b of sorted) {
    if (a.uuid === b.uuid) continue;
-   if (a.startMinutes < b.endMinutes && b.startMinutes < a.endMinutes) {
+   if (a.startMinutes < (b.endMinutes ?? 24 * 60) && b.startMinutes < (a.endMinutes ?? 24 * 60)) {
     neighbors.push(b.uuid);
    }
   }
@@ -136,6 +139,8 @@ export default function TimeGrid({
  onDropTodo,
  onDragOverGrid,
  nativeDragState,
+ onClickBlock,
+ onClickCurrentTime,
 }: TimeGridProps) {
  const gridContainerRef = useRef<HTMLDivElement>(null);
  const dragLeaveTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -200,7 +205,7 @@ export default function TimeGrid({
    style={{ minHeight: totalHeight }}
   >
    <HourMarkers hourHeight={hourHeight} />
-   <CurrentTimeLine top={currentTimeTop} label={formatHM(nowMinutes)} />
+   <CurrentTimeLine top={currentTimeTop} label={formatHM(nowMinutes)} onClickCurrentTime={onClickCurrentTime} />
 
    <div
     className={`time-grid-zone${isOver ? " time-grid-zone--over" : ""}`}
@@ -233,7 +238,7 @@ export default function TimeGrid({
      const scrollTop = scrollEl.scrollTop;
      const relativeY = e.clientY - containerTop + scrollTop;
      const minutes = (relativeY / hourHeight) * 60;
-     const snapped = Math.round(minutes / 5) * 5;
+     const snapped = snapTo5(minutes);
      onDragOverGrid(Math.max(0, Math.min(23 * 60 + 55, snapped)), e.shiftKey);
      // Clear any pending onDragLeave clear
      if (dragLeaveTimer.current) {
@@ -278,7 +283,7 @@ export default function TimeGrid({
       const scrollTop = scrollEl.scrollTop;
       const relativeY = e.clientY - containerTop + scrollTop;
       const minutes = (relativeY / hourHeight) * 60;
-      const snapped = Math.round(minutes / 5) * 5;
+      const snapped = snapTo5(minutes);
       const startMinutes = Math.max(0, Math.min(23 * 60 + 55, snapped));
       onDropTodo(data.uuid, startMinutes);
      } catch { /* ignore */ }
@@ -286,7 +291,7 @@ export default function TimeGrid({
    >
     {layoutBlocks.map(({ entry, column, totalColumns }) => {
      let displayStart = entry.startMinutes;
-     let displayEnd = entry.endMinutes;
+     let displayEnd: number = entry.endMinutes ?? nowMinutes;
      if (resizeState && resizeState.uuid === entry.uuid) {
       if (resizeState.type === "top") {
        displayStart = Math.max(0, Math.min(displayEnd - 5, resizeState.minutes));
@@ -325,6 +330,7 @@ export default function TimeGrid({
        onSelect={onSelectBlock}
        onDoubleClick={onDoubleClickBlock}
        onDelete={onDeleteBlock}
+       onClickBlock={onClickBlock}
       />
      );
     })}

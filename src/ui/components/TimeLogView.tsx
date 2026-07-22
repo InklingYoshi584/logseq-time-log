@@ -22,6 +22,8 @@ interface TimeLogViewProps {
  onDayChange: (day: number) => void;
  nativeDragState?: { uuid: string; content: string; startMinutes: number | null; shiftKey: boolean } | null;
  onDragOverGrid?: (minutes: number | null, shiftKey?: boolean) => void;
+ onClickBlock?: (uuid: string) => void;
+ onClickCurrentTime?: () => void;
 }
 
 function goToPrevDay(journalDay: number): number {
@@ -67,6 +69,8 @@ export default function TimeLogView({
  onDayChange,
  nativeDragState,
  onDragOverGrid,
+ onClickBlock,
+ onClickCurrentTime,
 }: TimeLogViewProps) {
  const localRef = useRef<HTMLDivElement>(null);
  const gridRef = propGridRef ?? localRef;
@@ -154,6 +158,8 @@ export default function TimeLogView({
       editingBlockUuid={editingBlockUuid}
       onRenameBlock={onRenameBlock}
       onDeleteBlock={onDeleteBlock}
+     onClickBlock={onClickBlock}
+     onClickCurrentTime={onClickCurrentTime}
      />
     </div>
    )

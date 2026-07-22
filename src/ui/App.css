@@ -1084,7 +1084,8 @@ html, body, #root {
   height: 2px;
   background: color-mix(in srgb, var(--danger, #f87171) 50%, transparent);
   z-index: 3;
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: pointer;
 }
 .time-grid-now-dot {
   position: absolute;
@@ -1456,5 +1457,75 @@ html, body, #root {
 }
 .time-grid-label {
   font-size: inherit;
+}
+
+/* ── Time Block States ── */
+.time-block--scheduled {
+  border: 2px dashed rgba(var(--ls-accent-rgb, 96, 165, 250), 0.5);
+  background: color-mix(in srgb, var(--ls-accent, #60a5fa) 15%, transparent);
+  opacity: 0.5;
+}
+
+.time-block--open-ended {
+  border-bottom: 2px dotted rgba(255,255,255,0.3);
+  animation: time-block-pulse 2s ease-in-out infinite;
+}
+
+.time-block--in-progress {
+  background: linear-gradient(to top, color-mix(in srgb, var(--ls-accent, #60a5fa) 30%, transparent) var(--progress-pct, 0%), transparent var(--progress-pct, 0%)) !important;
+}
+
+@keyframes time-block-pulse {
+  0%, 100% { border-bottom-color: rgba(255,255,255,0.3); }
+  50% { border-bottom-color: rgba(255,255,255,0.9); }
+}
+
+/* ── Error Badge ── */
+.time-block-error-badge {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-size: 10px;
+  background: #ef4444;
+  color: white;
+  border-radius: 3px;
+  padding: 0 3px;
+}
+
+/* ── Create Modal ── */
+.time-create-modal-search {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: var(--font);
+  outline: none;
+  margin-bottom: 14px;
+  box-sizing: border-box;
+}
+
+.time-create-modal-search:focus {
+  border-color: var(--ls-accent, var(--accent));
+}
+
+.time-create-modal-todos {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.time-create-modal-todo-item {
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.time-create-modal-todo-item:hover {
+  background: var(--bg-elevated, #f0f0f0);
+}
+
+.time-create-modal-todo-item--selected {
+  background: var(--ls-accent, #60a5fa);
+  color: white;
 }
 

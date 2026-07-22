@@ -795,19 +795,51 @@ export async function findOrCreateTimeLogBlock(pageName: string): Promise<string
  return block?.uuid ?? "";
 }
 
+export function snapTo5(minutes: number): number { return Math.round(minutes / 5) * 5; }
+
+const TIME_RE = /^\((\d{1,2}):(\d{2})\)\s*-\s*\((\d{1,2}):(\d{2})\)\s+(.+)$/;
+const START_SCHED_RE = /^\((\d{1,2}):(\d{2})\)\s*-\s*(\d{1,2}):(\d{2})\s+(.+)$/;
+const END_SCHED_RE = /^(\d{1,2}):(\d{2})\s*-\s*\((\d{1,2}):(\d{2})\)\s+(.+)$/;
+const PLAIN_RE = /^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})\s+(.+)$/;
+const OPEN_END_RE = /^(\d{1,2}):(\d{2})\s*-\s+(.+)$/;
+
 export function parseTimeLogEntry(raw: string, blockUuid: string, isClockEntry: boolean): TimeLogEntry | null {
- const match = raw.match(/^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})\s+(.+)$/);
- if (!match) return null;
- const startMinutes = parseInt(match[1]) * 60 + parseInt(match[2]);
- const endMinutes = parseInt(match[3]) * 60 + parseInt(match[4]);
- let rest = match[5].trim();
+ let m: RegExpMatchArray | null;
+ let isScheduledStart = false, isScheduledEnd = false;
+ let startMinutes: number, endMinutes: number | null = null;
+ let rest: string;
+ // Match: (both), (start)-end, start-(end), plain, open-ended
+ if ((m = raw.match(TIME_RE))) { startMinutes = +m[1] * 60 + +m[2]; endMinutes = +m[3] * 60 + +m[4]; rest = m[5].trim(); isScheduledStart = isScheduledEnd = true; }
+ else if ((m = raw.match(START_SCHED_RE))) { startMinutes = +m[1] * 60 + +m[2]; endMinutes = +m[3] * 60 + +m[4]; rest = m[5].trim(); isScheduledStart = true; }
+ else if ((m = raw.match(END_SCHED_RE))) { startMinutes = +m[1] * 60 + +m[2]; endMinutes = +m[3] * 60 + +m[4]; rest = m[5].trim(); isScheduledEnd = true; }
+ else if ((m = raw.match(PLAIN_RE))) { startMinutes = +m[1] * 60 + +m[2]; endMinutes = +m[3] * 60 + +m[4]; rest = m[5].trim(); }
+ else if ((m = raw.match(OPEN_END_RE))) { startMinutes = +m[1] * 60 + +m[2]; endMinutes = null; rest = m[3].trim(); }
+ else return null;
+ // Error suffix: (+5) or (-3)
+ let errorMinutes: number | undefined;
+ const errMatch = rest.match(/\(([+-]?\d+)\)\s*$/);
+ if (errMatch) { errorMinutes = parseInt(errMatch[1]); rest = rest.replace(/\([+-]?\d+\)\s*$/, "").trim(); }
  let todoUuid: string | undefined;
  const refMatch = rest.match(/\(\(([a-f0-9-]+)\)\)/);
- if (refMatch) {
-  todoUuid = refMatch[1];
-  rest = rest.replace(/\(\([a-f0-9-]+\)\)/, "").trim();
- }
- return { uuid: blockUuid, startMinutes, endMinutes, activity: rest, todoUuid, isClockEntry };
+ if (refMatch) { todoUuid = refMatch[1]; rest = rest.replace(/\(\([a-f0-9-]+\)\)/, "").trim(); }
+ return { uuid: blockUuid, startMinutes, endMinutes, activity: rest, todoUuid, isClockEntry, isScheduled: isScheduledStart || isScheduledEnd, isScheduledStart, isScheduledEnd, errorMinutes };
+}
+
+export function formatTimeLogEntry(entry: TimeLogEntry): string {
+ const fmt = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+ const s = entry.isScheduledStart ? `(${fmt(entry.startMinutes)})` : fmt(entry.startMinutes);
+ const timePart = entry.endMinutes !== null
+  ? `${s} - ${entry.isScheduledEnd ? `(${fmt(entry.endMinutes)})` : fmt(entry.endMinutes)}`
+  : `${s} - `;
+ let sfx = "";
+ if (entry.todoUuid) sfx += ` ((${entry.todoUuid}))`;
+ if (entry.activity) sfx += ` ${entry.activity}`;
+ if (entry.errorMinutes !== undefined) sfx += ` (${entry.errorMinutes > 0 ? "+" : ""}${entry.errorMinutes})`;
+ return (timePart + sfx).trim();
+}
+
+export async function detectAndMerge(timeLogUuid: string): Promise<void> {
+ // placeholder — implemented later
 }
 
 export async function queryTimeLogEntries(journalDay: number): Promise<TimeLogEntry[]> {
@@ -906,7 +938,7 @@ export async function queryTimeLogEntries(journalDay: number): Promise<TimeLogEn
  // Post-process: resolve activity for task-linked entries with empty text
  // Sync: ensure all task-linked entries have matching CLOCK data
  for (const entry of entries) {
-  if (!entry.todoUuid) continue;
+  if (!entry.todoUuid || entry.endMinutes === null) continue;
   try {
    const block = await logseq.Editor.getBlock(entry.todoUuid);
    if (!block?.content) continue;
@@ -980,11 +1012,10 @@ function formatHM(minutes: number): string {
 export async function updateTimeLogEntry(uuid: string, startMinutes: number, endMinutes: number): Promise<void> {
  const block = await logseq.Editor.getBlock(uuid);
  if (!block) return;
- const content = String(block.content ?? "");
- const match = content.match(/^(\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2})\s+(.*)$/);
- if (!match) return;
- const rest = match[2];
- const newContent = `${formatHM(startMinutes)} - ${formatHM(endMinutes)} ${rest}`;
+ const entry = parseTimeLogEntry(String(block.content ?? ""), uuid, false);
+ if (!entry) return;
+ const updated = { ...entry, startMinutes, endMinutes };
+ const newContent = formatTimeLogEntry(updated);
  await logseq.Editor.updateBlock(uuid, newContent);
 }
 
