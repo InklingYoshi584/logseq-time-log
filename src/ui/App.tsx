@@ -218,12 +218,7 @@ export default function App() {
     // Auto-select today when switching to Time Log tab with no day selected
     const now = new Date();
     const today = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
-    // Use handleSelectDay inline
-    setSelectedDay(today);
-    setDayLoading(true);
-    queryDayTodos(today).then(setDayTodos).catch(() => setDayTodos([])).finally(() => setDayLoading(false));
-    setTimeLogLoading(true);
-    queryTimeLogEntries(today).then(setTimeLogEntries).finally(() => setTimeLogLoading(false));
+    handleSelectDay(today);
    }
   }
   /* eslint-enable react-hooks/set-state-in-effect */
