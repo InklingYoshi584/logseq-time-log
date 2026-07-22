@@ -75,6 +75,8 @@ export default function App() {
  const [selectedPage, setSelectedPage] = useState<string | null>(null);
  const [activeTab, setActiveTab] = useState<AppTab>("tasks");
  const [timeLogEntries, setTimeLogEntries] = useState<TimeLogEntry[]>([]);
+ const timeLogEntriesRef = useRef(timeLogEntries);
+ timeLogEntriesRef.current = timeLogEntries;
  const [timeLogLoading, setTimeLogLoading] = useState(false);
  const [dragActiveData, setDragActiveData] = useState<DragData | null>(null);
  const [dragOverMinutes, setDragOverMinutes] = useState<number | null>(null);
@@ -489,7 +491,7 @@ export default function App() {
    await logseq.Editor.removeBlock(uuid);
   } else {
    // CLOCK entry: find the original block and remove the CLOCK line
-   const entry = timeLogEntries.find(e => e.uuid === uuid);
+   const entry = timeLogEntriesRef.current.find(e => e.uuid === uuid);
    if (entry?.todoUuid) {
     const block = await logseq.Editor.getBlock(entry.todoUuid);
     if (block?.content) {
@@ -510,7 +512,7 @@ export default function App() {
   }
   setSelectedBlockUuid(null);
   setTimeLogEntries(prev => prev.filter(e => e.uuid !== uuid));
- }, [selectedDay, refreshTimeLog, timeLogEntries]);
+ }, [selectedDay, refreshTimeLog]);
 
  const handleDropOnTimeLog = useCallback(async (uuid: string, startMinutes: number) => {
   const endMinutes = Math.min(24 * 60, startMinutes + 25);
@@ -596,7 +598,7 @@ export default function App() {
   const overId = over ? String(over.id) : "";
 
   const convertClockToReal = async (clockUuid: string, s: number, e: number) => {
-   const entry = timeLogEntries.find(en => en.uuid === clockUuid);
+   const entry = timeLogEntriesRef.current.find(en => en.uuid === clockUuid);
    if (!entry?.todoUuid || selectedDay === null) return;
    const pn = await resolveJournalPageName(selectedDay)
     ?? `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`;
