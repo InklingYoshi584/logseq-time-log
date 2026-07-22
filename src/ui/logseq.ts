@@ -870,7 +870,7 @@ export async function queryTimeLogEntries(journalDay: number): Promise<TimeLogEn
    for (const cr of clockRanges) {
     // Check if a manual entry already exists for this todo at this time
     const alreadyExists = entries.some(e =>
-     e.todoUuid === todo.uuid && e.startMinutes === cr.startMinutes
+     (e.todoUuid === clockSourceUuid || e.todoUuid === todo.uuid) && e.startMinutes === cr.startMinutes
     );
     if (!alreadyExists) {
      // Auto-materialize: create a # Time Log child for this CLOCK entry
