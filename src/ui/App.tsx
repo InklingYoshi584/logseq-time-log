@@ -485,7 +485,9 @@ export default function App() {
  }, [selectedDay, refreshTimeLog]);
 
  const deleteTimeLogEntry = useCallback(async (uuid: string) => {
-  await logseq.Editor.removeBlock(uuid);
+  if (!uuid.startsWith("clock-")) {
+   await logseq.Editor.removeBlock(uuid);
+  }
   setSelectedBlockUuid(null);
   setTimeLogEntries(prev => prev.filter(e => e.uuid !== uuid));
  }, [selectedDay, refreshTimeLog]);
