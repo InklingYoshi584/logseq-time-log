@@ -70,6 +70,10 @@ export default function TimeLogView({
 }: TimeLogViewProps) {
  const localRef = useRef<HTMLDivElement>(null);
  const gridRef = propGridRef ?? localRef;
+ const hRef = useRef(hourHeight);
+ hRef.current = hourHeight;
+ const cbRef = useRef(onHourHeightChange);
+ cbRef.current = onHourHeightChange;
 
  useEffect(() => {
   const el = gridRef.current;
@@ -77,12 +81,13 @@ export default function TimeLogView({
   const onWheel = (e: WheelEvent) => {
    if (e.ctrlKey) {
     e.preventDefault();
-    onHourHeightChange(Math.max(30, Math.min(240, hourHeight + (e.deltaY > 0 ? -10 : 10))));
+    const h = hRef.current;
+    cbRef.current(Math.max(30, Math.min(240, h + (e.deltaY > 0 ? -10 : 10))));
    }
   };
   el.addEventListener("wheel", onWheel, { passive: false });
   return () => el.removeEventListener("wheel", onWheel);
- }, [hourHeight, onHourHeightChange, gridRef]);
+ }, [gridRef]);
 
  // Day nav
  const handlePrevDay = useCallback(() => {
@@ -132,7 +137,7 @@ export default function TimeLogView({
       −
      </button>
      <span className="time-log-zoom-label">
-      {Math.round((hourHeight / 60) * 100)}%
+      {Math.round((hourHeight / 30) * 100)}%
      </span>
      <button
       className="time-log-zoom-btn"
