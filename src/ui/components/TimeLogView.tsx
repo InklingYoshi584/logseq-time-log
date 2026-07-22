@@ -70,25 +70,6 @@ export default function TimeLogView({
 }: TimeLogViewProps) {
  const localRef = useRef<HTMLDivElement>(null);
  const gridRef = propGridRef ?? localRef;
- const hourHeightRef = useRef(hourHeight);
- hourHeightRef.current = hourHeight;
- const onHourHeightChangeRef = useRef(onHourHeightChange);
- onHourHeightChangeRef.current = onHourHeightChange;
-
- // Zoom: Ctrl+scroll
- useEffect(() => {
-  const grid = gridRef.current;
-  if (!grid) return;
-  const onWheel = (e: WheelEvent) => {
-   if (e.ctrlKey) {
-    e.preventDefault();
-    const h = hourHeightRef.current;
-    onHourHeightChangeRef.current(Math.max(30, Math.min(240, h + (e.deltaY > 0 ? -10 : 10))));
-   }
-  };
-  grid.addEventListener("wheel", onWheel, { passive: false });
-  return () => grid.removeEventListener("wheel", onWheel);
- }, []);
 
  // Day nav
  const handlePrevDay = useCallback(() => {
@@ -151,7 +132,14 @@ export default function TimeLogView({
    {loading ? (
     <p className="todo-empty">Loading...</p>
    ) : (
-    <div ref={gridRef} className="time-grid-scroll">
+    <div ref={gridRef} className="time-grid-scroll"
+     onWheel={(e) => {
+      if (e.ctrlKey) {
+       e.preventDefault();
+       onHourHeightChange(Math.max(30, Math.min(240, hourHeight + (e.deltaY > 0 ? -10 : 10))));
+      }
+     }}
+    >
      <TimeGrid
       entries={entries}
       hourHeight={hourHeight}
@@ -169,7 +157,8 @@ export default function TimeLogView({
       onDeleteBlock={onDeleteBlock}
      />
     </div>
-   )}
-  </div>
+   )
+   }
+  </div >
  );
 }
