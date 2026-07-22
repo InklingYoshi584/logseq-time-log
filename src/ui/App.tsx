@@ -510,6 +510,7 @@ export default function App() {
   const blockUuid = await findOrCreateTimeLogBlock(pageName);
   await logseq.Editor.insertBlock(blockUuid, `${formatHM(startMinutes)} - ${formatHM(endMinutes)} ((${resolvedUuid}))`, { sibling: false });
   syncToLogbook({ todoUuid: resolvedUuid, startMinutes, endMinutes });
+  if (selectedDay) queryDayTodos(selectedDay).then(setDayTodos);
   await refreshTimeLog();
  }, [selectedDay, refreshTimeLog]);
 
@@ -534,7 +535,7 @@ export default function App() {
      const sh = String(Math.floor(e.startMinutes / 60)).padStart(2, "0");
      const sm = String(e.startMinutes % 60).padStart(2, "0");
      const re = new RegExp(`CLOCK:\\s*\\[.*?${sh}:${sm}:\\d{2}\\].*\\n?`, "g");
-     await logseq.Editor.updateBlock(e.todoUuid, String(b.content).replace(re, ""));
+     await logseq.Editor.updateBlock(e.todoUuid, String(b.content).replace(re, "")); if (selectedDay) queryDayTodos(selectedDay).then(setDayTodos);
     }
    } catch { /* ignore */ }
   }
@@ -635,7 +636,7 @@ export default function App() {
     const newEnd = newStart + duration;
     await updateTimeLogEntry(data.uuid, newStart, newEnd);
     updateEntryLocal(data.uuid, { startMinutes: newStart, endMinutes: newEnd });
-    { const e = timeLogEntriesRef.current.find(en => en.uuid === data.uuid); if (e?.todoUuid) syncToLogbook({ ...e, startMinutes: newStart, endMinutes: newEnd }, data.startMinutes); }
+    { const e = timeLogEntriesRef.current.find(en => en.uuid === data.uuid); if (e?.todoUuid) syncToLogbook({ ...e, startMinutes: newStart, endMinutes: newEnd }, data.startMinutes); } if (selectedDay) queryDayTodos(selectedDay).then(setDayTodos);
     break;
    }
    case "time-block-top": {
@@ -644,7 +645,7 @@ export default function App() {
     if (newStart >= data.endMinutes - 5) return;
     await updateTimeLogEntry(data.uuid, newStart, data.endMinutes);
     updateEntryLocal(data.uuid, { startMinutes: newStart });
-    { const e = timeLogEntriesRef.current.find(en => en.uuid === data.uuid); if (e?.todoUuid && data.endMinutes) syncToLogbook({ ...e, startMinutes: newStart, endMinutes: data.endMinutes }, data.startMinutes); }
+    { const e = timeLogEntriesRef.current.find(en => en.uuid === data.uuid); if (e?.todoUuid && data.endMinutes) syncToLogbook({ ...e, startMinutes: newStart, endMinutes: data.endMinutes }, data.startMinutes); } if (selectedDay) queryDayTodos(selectedDay).then(setDayTodos);
     break;
    }
    case "time-block-bottom": {
@@ -653,7 +654,7 @@ export default function App() {
     if (newEnd <= data.startMinutes + 5) return;
     await updateTimeLogEntry(data.uuid, data.startMinutes, newEnd);
     updateEntryLocal(data.uuid, { endMinutes: newEnd });
-    { const e = timeLogEntriesRef.current.find(en => en.uuid === data.uuid); if (e?.todoUuid && data.startMinutes !== undefined) syncToLogbook({ ...e, startMinutes: data.startMinutes, endMinutes: newEnd }, data.startMinutes); }
+    { const e = timeLogEntriesRef.current.find(en => en.uuid === data.uuid); if (e?.todoUuid && data.startMinutes !== undefined) syncToLogbook({ ...e, startMinutes: data.startMinutes, endMinutes: newEnd }, data.startMinutes); } if (selectedDay) queryDayTodos(selectedDay).then(setDayTodos);
     break;
    }
    case "create-selection": {
