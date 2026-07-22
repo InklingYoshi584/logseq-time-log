@@ -904,6 +904,42 @@ export async function queryTimeLogEntries(journalDay: number): Promise<TimeLogEn
  } catch { /* keep existing */ }
 
  // Post-process: resolve activity for task-linked entries with empty text
+ // Sync: ensure all task-linked entries have matching CLOCK data
+ for (const entry of entries) {
+  if (!entry.todoUuid) continue;
+  try {
+   const block = await logseq.Editor.getBlock(entry.todoUuid);
+   if (!block?.content) continue;
+   const rawContent = String(block.content);
+   const clockRanges = parseClockRanges(rawContent);
+   const hasMatchingClock = clockRanges.some(cr =>
+    cr.startMinutes === entry.startMinutes && cr.endMinutes === entry.endMinutes
+   );
+   if (!hasMatchingClock) {
+    // Add CLOCK entry to LOGBOOK
+    const y = Math.floor(journalDay / 10000);
+    const m = Math.floor((journalDay % 10000) / 100);
+    const d = journalDay % 100;
+    const dateStr = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const sh = String(Math.floor(entry.startMinutes / 60)).padStart(2, "0");
+    const sm = String(entry.startMinutes % 60).padStart(2, "0");
+    const eh = String(Math.floor(entry.endMinutes / 60)).padStart(2, "0");
+    const em = String(entry.endMinutes % 60).padStart(2, "0");
+    const durH = String(Math.floor((entry.endMinutes - entry.startMinutes) / 60)).padStart(2, "0");
+    const durM = String((entry.endMinutes - entry.startMinutes) % 60).padStart(2, "0");
+    const newClock = `CLOCK: [${dateStr} ${sh}:${sm}:00]--[${dateStr} ${eh}:${em}:00] =>  ${durH}:${durM}:00`;
+    const lbMatch = rawContent.match(/:LOGBOOK:([\s\S]*?):END:/i);
+    let newContent: string;
+    if (lbMatch) {
+     newContent = rawContent.replace(/:LOGBOOK:([\s\S]*?):END:/i, `:LOGBOOK:$1${newClock}\n:END:`);
+    } else {
+     newContent = rawContent + `\n:LOGBOOK:\n${newClock}\n:END:`;
+    }
+    await logseq.Editor.updateBlock(entry.todoUuid, newContent);
+   }
+  } catch { /* skip */ }
+ }
+
  for (const entry of entries) {
   if (!entry.activity.trim() && entry.todoUuid) {
    try {
