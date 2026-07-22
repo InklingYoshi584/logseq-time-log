@@ -595,12 +595,25 @@ export default function App() {
 
   const overId = over ? String(over.id) : "";
 
+  const convertClockToReal = async (clockUuid: string, s: number, e: number) => {
+   const entry = timeLogEntries.find(en => en.uuid === clockUuid);
+   if (!entry?.todoUuid || selectedDay === null) return;
+   const pn = await resolveJournalPageName(selectedDay)
+    ?? `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`;
+   await logseq.Editor.createPage(pn, {}, { journal: true, createFirstBlock: false });
+   const bu = await findOrCreateTimeLogBlock(pn);
+   await logseq.Editor.insertBlock(bu, `${formatHM(s)} - ${formatHM(e)} ((${entry.todoUuid}))`, { sibling: false });
+   setTimeLogEntries(prev => prev.filter(en => en.uuid !== clockUuid));
+   await refreshTimeLog();
+  };
+
   switch (data.type) {
    case "time-block": {
     if (!data.uuid || data.startMinutes === undefined || data.endMinutes === undefined) return;
     const duration = data.endMinutes - data.startMinutes;
     const newStart = overMinutes !== null ? Math.max(0, Math.min(23 * 60 + 59 - duration, overMinutes)) : data.startMinutes;
     const newEnd = newStart + duration;
+    if (data.uuid.startsWith("clock-")) { await convertClockToReal(data.uuid, newStart, newEnd); break; }
     await updateTimeLogEntry(data.uuid, newStart, newEnd);
     updateEntryLocal(data.uuid, { startMinutes: newStart, endMinutes: newEnd });
     break;
@@ -609,6 +622,7 @@ export default function App() {
     if (!data.uuid || data.endMinutes === undefined) return;
     const newStart = overMinutes !== null ? Math.max(0, Math.min(data.endMinutes - 5, overMinutes)) : (data.startMinutes ?? data.endMinutes - 25);
     if (newStart >= data.endMinutes - 5) return;
+    if (data.uuid.startsWith("clock-")) { await convertClockToReal(data.uuid, newStart, data.endMinutes); break; }
     await updateTimeLogEntry(data.uuid, newStart, data.endMinutes);
     updateEntryLocal(data.uuid, { startMinutes: newStart });
     break;
@@ -617,6 +631,7 @@ export default function App() {
     if (!data.uuid || data.startMinutes === undefined) return;
     const newEnd = overMinutes !== null ? Math.max(data.startMinutes + 5, Math.min(24 * 60, overMinutes)) : (data.endMinutes ?? data.startMinutes + 25);
     if (newEnd <= data.startMinutes + 5) return;
+    if (data.uuid.startsWith("clock-")) { await convertClockToReal(data.uuid, data.startMinutes, newEnd); break; }
     await updateTimeLogEntry(data.uuid, data.startMinutes, newEnd);
     updateEntryLocal(data.uuid, { endMinutes: newEnd });
     break;

@@ -70,24 +70,6 @@ export default function TimeLogView({
 }: TimeLogViewProps) {
  const localRef = useRef<HTMLDivElement>(null);
  const gridRef = propGridRef ?? localRef;
- const hRef = useRef(hourHeight);
- hRef.current = hourHeight;
- const cbRef = useRef(onHourHeightChange);
- cbRef.current = onHourHeightChange;
-
- useEffect(() => {
-  const el = gridRef.current;
-  if (!el) return;
-  const onWheel = (e: WheelEvent) => {
-   if (e.ctrlKey) {
-    e.preventDefault();
-    const h = hRef.current;
-    cbRef.current(Math.max(30, Math.min(240, h + (e.deltaY > 0 ? -10 : 10))));
-   }
-  };
-  el.addEventListener("wheel", onWheel, { passive: false });
-  return () => el.removeEventListener("wheel", onWheel);
- }, [gridRef]);
 
  // Day nav
  const handlePrevDay = useCallback(() => {
@@ -150,7 +132,13 @@ export default function TimeLogView({
    {loading ? (
     <p className="todo-empty">Loading...</p>
    ) : (
-    <div ref={gridRef} className="time-grid-scroll">
+    <div ref={gridRef} className="time-grid-scroll"
+     onWheel={(e) => {
+      if (e.ctrlKey) {
+       onHourHeightChange(Math.max(30, Math.min(240, hourHeight + (e.deltaY > 0 ? -10 : 10))));
+      }
+     }}
+    >
      <TimeGrid
       entries={entries}
       hourHeight={hourHeight}
