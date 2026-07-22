@@ -242,18 +242,15 @@ export default function DayDetail({
         <div className="day-detail-sections">
           {orderedKeys.map((key) => {
             const items = sections.get(key) ?? [];
-            const isEmpty = items.length === 0;
-
+            if (items.length === 0) return null;
             return (
               <section className="day-priority-section" data-priority={key}>
                 <h3 className="day-priority-heading">{PRIORITY_LABELS[key]}</h3>
-                {isEmpty ? null : (
-                  <div className="day-todo-list">
-                    {items.map((todo) => (
-                      <DraggableTodoCard key={todo.uuid} todo={todo} onChangeMarker={onChangeMarker} />
-                    ))}
-                  </div>
-                )}
+                <div className="day-todo-list">
+                  {items.map((todo) => (
+                    <DraggableTodoCard key={todo.uuid} todo={todo} onChangeMarker={onChangeMarker} />
+                  ))}
+                </div>
               </section>
             );
           })}

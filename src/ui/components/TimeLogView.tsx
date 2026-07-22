@@ -70,6 +70,10 @@ export default function TimeLogView({
 }: TimeLogViewProps) {
  const localRef = useRef<HTMLDivElement>(null);
  const gridRef = propGridRef ?? localRef;
+ const hourHeightRef = useRef(hourHeight);
+ hourHeightRef.current = hourHeight;
+ const onHourHeightChangeRef = useRef(onHourHeightChange);
+ onHourHeightChangeRef.current = onHourHeightChange;
 
  // Zoom: Ctrl+scroll
  useEffect(() => {
@@ -78,7 +82,8 @@ export default function TimeLogView({
   const onWheel = (e: WheelEvent) => {
    if (e.ctrlKey) {
     e.preventDefault();
-    onHourHeightChange(Math.max(30, Math.min(240, hourHeight + (e.deltaY > 0 ? -10 : 10))));
+    const h = hourHeightRef.current;
+    onHourHeightChangeRef.current(Math.max(30, Math.min(240, h + (e.deltaY > 0 ? -10 : 10))));
    }
   };
   grid.addEventListener("wheel", onWheel, { passive: false });
@@ -119,16 +124,12 @@ export default function TimeLogView({
  return (
   <div className="time-log-view">
    <div className="time-log-header">
-    <button className="time-log-nav-btn" onClick={handlePrevDay}>
-     ←
-    </button>
-    <button className="time-log-today-btn" onClick={handleToday}>
-     Today
-    </button>
-    <span className="time-log-date">{displayDate}</span>
-    <button className="time-log-nav-btn" onClick={handleNextDay}>
-     →
-    </button>
+    <button className="time-log-today-btn" onClick={handleToday}>Today</button>
+    <div className="time-log-date-group">
+     <button className="time-log-nav-btn" onClick={handlePrevDay}>←</button>
+     <span className="time-log-date">{displayDate}</span>
+     <button className="time-log-nav-btn" onClick={handleNextDay}>→</button>
+    </div>
     <div className="time-log-zoom">
      <button
       className="time-log-zoom-btn"

@@ -1445,4 +1445,11 @@ html, body, #root {
   background: rgba(255,0,0,0.4);
   opacity: 1;
 }
+.time-log-date-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  justify-content: center;
+}
 

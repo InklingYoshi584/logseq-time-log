@@ -94,7 +94,6 @@ export default function App() {
  const [nativeDragState, setNativeDragState] = useState<{ uuid: string; content: string; startMinutes: number | null; shiftKey: boolean } | null>(null);
  const gridScrollRef = useRef<HTMLDivElement | null>(null);
 
- /* ── Close / ESC ── */
  const handleClose = useCallback(() => {
   logseq.hideMainUI();
  }, []);
@@ -194,6 +193,14 @@ export default function App() {
    setLoading(false);
   }
  }, [currentYear, loadYear]);
+
+ const handleRefresh = useCallback(async () => {
+  await initYears();
+  if (activeTab === "timelog" && selectedDay !== null) {
+   const entries = await queryTimeLogEntries(selectedDay);
+   setTimeLogEntries(entries);
+  }
+ }, [initYears, activeTab, selectedDay]);
 
  useEffect(() => {
   // eslint-disable-next-line -- initial load
@@ -466,6 +473,7 @@ export default function App() {
   } catch { /* use original uuid */ }
   const pageName = await resolveJournalPageName(selectedDay)
    ?? `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`;
+  await logseq.Editor.createPage(pageName, {}, { journal: true, createFirstBlock: false });
   const blockUuid = await findOrCreateTimeLogBlock(pageName);
   await logseq.Editor.insertBlock(blockUuid, `${formatHM(startMinutes)} - ${formatHM(endMinutes)} ((${resolvedUuid}))`, { sibling: false });
   await refreshTimeLog();
@@ -475,6 +483,7 @@ export default function App() {
   if (selectedDay === null) return;
   const pageName = await resolveJournalPageName(selectedDay)
    ?? `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`;
+  await logseq.Editor.createPage(pageName, {}, { journal: true, createFirstBlock: false });
   const blockUuid = await findOrCreateTimeLogBlock(pageName);
   await logseq.Editor.insertBlock(blockUuid, `${formatHM(startMinutes)} - ${formatHM(endMinutes)} ${activity}`, { sibling: false });
   refreshTimeLog();
@@ -743,7 +752,7 @@ export default function App() {
 
  return (
   <div className="time-log-app">
-   <HeaderBar activeTab={activeTab} onTabChange={setActiveTab} onRefresh={initYears} onClose={handleClose} />
+   <HeaderBar activeTab={activeTab} onTabChange={setActiveTab} onRefresh={handleRefresh} onClose={handleClose} />
    <main className="time-log-content">
     {activeTab === "tasks" ? (
      <SplitView left={journalContent} right={rightContent} />
