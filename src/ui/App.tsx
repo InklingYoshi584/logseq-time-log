@@ -487,10 +487,30 @@ export default function App() {
  const deleteTimeLogEntry = useCallback(async (uuid: string) => {
   if (!uuid.startsWith("clock-")) {
    await logseq.Editor.removeBlock(uuid);
+  } else {
+   // CLOCK entry: find the original block and remove the CLOCK line
+   const entry = timeLogEntries.find(e => e.uuid === uuid);
+   if (entry?.todoUuid) {
+    const block = await logseq.Editor.getBlock(entry.todoUuid);
+    if (block?.content) {
+     const content = String(block.content);
+     // Remove the CLOCK line matching this entry's time range
+     const sh = String(Math.floor(entry.startMinutes / 60)).padStart(2, "0");
+     const sm = String(entry.startMinutes % 60).padStart(2, "0");
+     const lines = content.split("\n");
+     const filtered = lines.filter(line => {
+      if (!line.includes("CLOCK:")) return true;
+      if (line.includes(`${sh}:${sm}:`)) return false;
+      return true;
+     });
+     const newContent = filtered.join("\n");
+     await logseq.Editor.updateBlock(entry.todoUuid, newContent);
+    }
+   }
   }
   setSelectedBlockUuid(null);
   setTimeLogEntries(prev => prev.filter(e => e.uuid !== uuid));
- }, [selectedDay, refreshTimeLog]);
+ }, [selectedDay, refreshTimeLog, timeLogEntries]);
 
  const handleDropOnTimeLog = useCallback(async (uuid: string, startMinutes: number) => {
   const endMinutes = Math.min(24 * 60, startMinutes + 25);
