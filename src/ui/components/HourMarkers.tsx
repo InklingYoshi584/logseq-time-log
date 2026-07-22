@@ -17,11 +17,14 @@ export default function HourMarkers({ hourHeight }: HourMarkersProps) {
         markers.push({ key, top, label, major: true, half: false });
       } else if (q === 2) {
         // :30 — minor label, dashed line
-        const label = `${String(h).padStart(2, "0")}:30`;
+        const label = "30";
         markers.push({ key, top, label, major: false, half: true });
-      } else {
-        // :15, :45 — no label, faint dotted line
-        markers.push({ key, top, label: null, major: false, half: false });
+      } else if (q === 1) {
+        // :15 — quarter, no label but has mark
+        markers.push({ key, top, label: "15", major: false, half: false });
+      } else if (q === 3) {
+        // :45 — quarter, no label but has mark
+        markers.push({ key, top, label: "45", major: false, half: false });
       }
     }
   }
