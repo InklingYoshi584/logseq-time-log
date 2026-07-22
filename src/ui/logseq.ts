@@ -837,7 +837,25 @@ export async function queryTimeLogEntries(journalDay: number): Promise<TimeLogEn
 
  // CLOCK entries from TODOs on the day
  try {
-  const todos = await queryDayTodos(journalDay);
+  // Query all TODOs on the day (not just # Todo descendants)
+  const allTodosQuery = `
+      [:find (pull ?b [
+        :block/uuid
+        :block/content
+        {:block/page [:block/name :block/journal-day]}
+        {:block/parent [:block/uuid]}
+      ])
+       :where
+       [?b :block/page ?p]
+       [?p :block/journal-day ${journalDay}]
+       ${markerClause()}]`;
+  const allResults = await runQuery(allTodosQuery) as Array<Array<unknown>> | null;
+  const todos = allResults ? allResults.flat().map(normalizeTodo) : [];
+  // Also include reference blocks
+  const refTodos = await queryAndResolveRefs(journalDay);
+  for (const rt of refTodos) {
+   if (!todos.some(t => t.uuid === rt.uuid)) todos.push(rt);
+  }
   const existingRefs = new Set(entries.map(e => e.todoUuid).filter(Boolean));
   for (const todo of todos) {
    // For reference blocks, use the original UUID for CLOCK data
