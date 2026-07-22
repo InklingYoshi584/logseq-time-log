@@ -840,8 +840,14 @@ export async function queryTimeLogEntries(journalDay: number): Promise<TimeLogEn
   const todos = await queryDayTodos(journalDay);
   const existingRefs = new Set(entries.map(e => e.todoUuid).filter(Boolean));
   for (const todo of todos) {
-   const rawBlock = await logseq.Editor.getBlock(todo.uuid);
-   const rawContent = typeof rawBlock?.content === "string" ? rawBlock.content : todo.content;
+   // For reference blocks, use the original UUID for CLOCK data
+   let clockSourceUuid = todo.uuid;
+   const refCheck = await logseq.Editor.getBlock(todo.uuid);
+   const refContent = typeof refCheck?.content === "string" ? refCheck.content : "";
+   const refMatch = refContent.match(/\(\(([a-f0-9-]+)\)\)/);
+   if (refMatch) clockSourceUuid = refMatch[1];
+   const rawBlock = await logseq.Editor.getBlock(clockSourceUuid);
+   const rawContent = typeof rawBlock?.content === "string" ? rawBlock.content : "";
    const clockRanges = parseClockRanges(rawContent);
    for (const cr of clockRanges) {
     // Check if a manual entry already exists for this todo at this time
@@ -853,7 +859,7 @@ export async function queryTimeLogEntries(journalDay: number): Promise<TimeLogEn
      const activity = cleanContent(todo.content) ?? "";
      await logseq.Editor.insertBlock(
       timeLogUuid,
-      `${formatHM(cr.startMinutes)} - ${formatHM(cr.endMinutes)} ((${todo.uuid}))`,
+      `${formatHM(cr.startMinutes)} - ${formatHM(cr.endMinutes)} ((${clockSourceUuid}))`,
       { sibling: false }
      );
     }
