@@ -838,28 +838,46 @@ export async function queryTimeLogEntries(journalDay: number): Promise<TimeLogEn
  // CLOCK entries from TODOs on the day
  try {
   const todos = await queryDayTodos(journalDay);
-  const seenTodoUuids = new Set(entries.map((e) => e.todoUuid).filter(Boolean));
+  const existingRefs = new Set(entries.map(e => e.todoUuid).filter(Boolean));
   for (const todo of todos) {
    const rawBlock = await logseq.Editor.getBlock(todo.uuid);
    const rawContent = typeof rawBlock?.content === "string" ? rawBlock.content : todo.content;
    const clockRanges = parseClockRanges(rawContent);
-   for (let i = 0; i < clockRanges.length; i++) {
-    const cr = clockRanges[i];
-    // Deduplicate: skip CLOCK if we already have a manual entry for this todoUuid
-    if (todo.uuid && seenTodoUuids.has(todo.uuid)) continue;
-    entries.push({
-     uuid: `clock-${todo.uuid}-${i}`,
-     startMinutes: cr.startMinutes,
-     endMinutes: cr.endMinutes,
-     activity: cleanContent(todo.content) ?? todo.content,
-     todoUuid: todo.uuid,
-     isClockEntry: true,
-    });
+   for (const cr of clockRanges) {
+    // Check if a manual entry already exists for this todo at this time
+    const alreadyExists = entries.some(e =>
+     e.todoUuid === todo.uuid && e.startMinutes === cr.startMinutes
+    );
+    if (!alreadyExists) {
+     // Auto-materialize: create a # Time Log child for this CLOCK entry
+     const activity = cleanContent(todo.content) ?? "";
+     await logseq.Editor.insertBlock(
+      timeLogUuid,
+      `${formatHM(cr.startMinutes)} - ${formatHM(cr.endMinutes)} ((${todo.uuid}))`,
+      { sibling: false }
+     );
+    }
    }
   }
  } catch (err) {
   console.warn("[time-log] Failed to parse CLOCK entries:", err);
  }
+
+ // Re-read children to include newly materialized entries
+ try {
+  const blocks = await logseq.Editor.getPageBlocksTree(pageName);
+  const timeLogBlock = (blocks as Array<Record<string, unknown>>).find((b) => b.uuid === timeLogUuid);
+  if (timeLogBlock && timeLogBlock.children) {
+   const allChildren = timeLogBlock.children as Array<Record<string, unknown>>;
+   const freshEntries: TimeLogEntry[] = [];
+   for (const child of allChildren) {
+    const entry = parseTimeLogEntry(String(child.content), String(child.uuid), false);
+    if (entry) freshEntries.push(entry);
+   }
+   entries.length = 0;
+   entries.push(...freshEntries);
+  }
+ } catch { /* keep existing */ }
 
  // Post-process: resolve activity for task-linked entries with empty text
  for (const entry of entries) {
