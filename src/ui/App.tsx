@@ -177,6 +177,12 @@ export default function App() {
    await Promise.all(promises);
 
    const pageResults = await queryAllTodos();
+   // Retry if DB not fully indexed on first boot
+   if (pageResults.length === 0) {
+     await new Promise(r => setTimeout(r, 600));
+     const retry = await queryAllTodos();
+     if (retry.length > 0) { pageResults.length = 0; pageResults.push(...retry); }
+   }
    const grouped = groupTodos(pageResults);
    setPageTodos(sortPageTodos(grouped.pages));
 
@@ -189,8 +195,13 @@ export default function App() {
       console.log("[time-log] auto-selecting day:", day);
       setSelectedDay(day);
       setDayLoading(true);
-      const todos = await queryDayTodos(day);
+      let todos = await queryDayTodos(day);
       console.log("[init] dayTodos count:", todos.length, "day:", day);
+      if (todos.length === 0) {
+        await new Promise(r => setTimeout(r, 600));
+        todos = await queryDayTodos(day);
+        console.log("[init] retry dayTodos count:", todos.length, "day:", day);
+      }
       setDayTodos(todos);
       setDayLoading(false);
      }
@@ -254,7 +265,7 @@ export default function App() {
  useEffect(() => {
   // eslint-disable-next-line -- initial load
   // Small delay to let Logseq DB finish indexing on first boot
-  const timer = setTimeout(initYears, 300);
+  const timer = setTimeout(initYears, 800);
   return () => clearTimeout(timer);
  }, [initYears]);
 
