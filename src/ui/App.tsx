@@ -836,15 +836,28 @@ export default function App() {
  }, [refreshTimeLog, updateEntryLocal]);
 
  const handleClickBlock = useCallback(async (uuid: string) => {
-  // Close open-ended block: set endMinutes to current time
   const e = timeLogEntriesRef.current.find(en => en.uuid === uuid);
-  if (!e || e.endMinutes !== null) return;
+  if (!e) return;
   const nowMins = snapTo5(new Date().getHours() * 60 + new Date().getMinutes());
-  const updated = { ...e, endMinutes: nowMins, isScheduled: false, isScheduledStart: false, isScheduledEnd: false };
-  const content = formatTimeLogEntry(updated);
-  await logseq.Editor.updateBlock(uuid, content);
-  updateEntryLocal(uuid, { endMinutes: nowMins });
-  if (e.todoUuid) syncToLogbook({ ...e, startMinutes: e.startMinutes, endMinutes: nowMins });
+  if (e.endMinutes === null) {
+   // Open-ended → close at current time
+   const updated = { ...e, endMinutes: nowMins, isScheduled: false, isScheduledStart: false, isScheduledEnd: false };
+   const content = formatTimeLogEntry(updated);
+   await logseq.Editor.updateBlock(uuid, content);
+   updateEntryLocal(uuid, { endMinutes: nowMins });
+   if (e.todoUuid) syncToLogbook({ ...e, startMinutes: e.startMinutes, endMinutes: nowMins });
+  } else if (e.isScheduled) {
+   // In-progress scheduled → manual complete with error
+   autoClockRef.current.add(uuid); // stop auto-clock from re-processing
+   const endError = e.endMinutes - nowMins; // positive = late, negative = early
+   const updated = { ...e, endMinutes: nowMins, isScheduled: false, isScheduledStart: false, isScheduledEnd: false, errorMinutes: endError };
+   const content = formatTimeLogEntry(updated);
+   await logseq.Editor.updateBlock(uuid, content);
+   updateEntryLocal(uuid, { endMinutes: nowMins, isScheduled: false, isScheduledStart: false, isScheduledEnd: false, errorMinutes: endError });
+   if (e.todoUuid) syncToLogbook({ ...e, startMinutes: e.startMinutes, endMinutes: nowMins });
+  } else {
+   return; // regular completed block — no action
+  }
   if (selectedDay) setTimeout(() => queryDayTodos(selectedDay).then(setDayTodos), 150);
   await refreshTimeLog();
  }, [selectedDay, refreshTimeLog, updateEntryLocal]);

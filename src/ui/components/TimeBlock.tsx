@@ -93,13 +93,16 @@ export default function TimeBlock({
   }, []);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
-    if (!isOpenEnded || !onClickBlock) return;
+    if (!onClickBlock) return;
+    const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+    const isInProgress = entry.isScheduled && nowMins >= entry.startMinutes;
+    if (!isOpenEnded && !isInProgress) return;
     const dx = e.clientX - pointerStartRef.current.x;
     const dy = e.clientY - pointerStartRef.current.y;
     if (Math.abs(dx) < 3 && Math.abs(dy) < 3) {
       onClickBlock(entry.uuid);
     }
-  }, [isOpenEnded, onClickBlock, entry.uuid]);
+  }, [isOpenEnded, entry.isScheduled, entry.startMinutes, onClickBlock, entry.uuid]);
 
   let colorClass: string;
   if (entry.isClockEntry) {
