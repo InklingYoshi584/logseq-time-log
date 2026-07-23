@@ -255,7 +255,9 @@ export default function App() {
 
  useEffect(() => {
   // eslint-disable-next-line -- initial load
-  initYears();
+  // Small delay to let Logseq DB finish indexing on first boot
+  const timer = setTimeout(initYears, 300);
+  return () => clearTimeout(timer);
  }, [initYears]);
 
  useEffect(() => {
@@ -899,9 +901,9 @@ export default function App() {
    await logseq.Editor.updateBlock(uuid, content);
    updateEntryLocal(uuid, { endMinutes: nowMins, isScheduled: false, isScheduledStart: false, isScheduledEnd: false, errorMinutes: endError });
    if (e.todoUuid) {
-     syncToLogbook({ todoUuid: e.todoUuid, startMinutes: e.startMinutes, endMinutes: nowMins, isScheduled: false });
-     const origMarker = manualMarkerRef.current.get(e.todoUuid);
-     if (origMarker) { await changeMarker(e.todoUuid, origMarker); manualMarkerRef.current.delete(e.todoUuid); }
+    syncToLogbook({ todoUuid: e.todoUuid, startMinutes: e.startMinutes, endMinutes: nowMins, isScheduled: false });
+    const origMarker = manualMarkerRef.current.get(e.todoUuid);
+    if (origMarker) { await changeMarker(e.todoUuid, origMarker); manualMarkerRef.current.delete(e.todoUuid); }
    }
   } else {
    return; // regular completed block — no action
