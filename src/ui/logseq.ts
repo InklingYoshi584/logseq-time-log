@@ -899,7 +899,7 @@ export async function queryTimeLogEntries(journalDay: number): Promise<TimeLogEn
    if (refMatch) clockSourceUuid = refMatch[1];
    const rawBlock = await logseq.Editor.getBlock(clockSourceUuid);
    const rawContent = typeof rawBlock?.content === "string" ? rawBlock.content : "";
-   const clockRanges = parseClockRanges(rawContent);
+   const clockRanges = parseClockRanges(rawContent, journalDay);
    for (const cr of clockRanges) {
     // Check if a manual entry already exists for this todo at this time
     const alreadyExists = entries.some(e =>
@@ -944,7 +944,7 @@ export async function queryTimeLogEntries(journalDay: number): Promise<TimeLogEn
    const block = await logseq.Editor.getBlock(entry.todoUuid);
    if (!block?.content) continue;
    const rawContent = String(block.content);
-   const clockRanges = parseClockRanges(rawContent);
+   const clockRanges = parseClockRanges(rawContent, journalDay);
    const hasMatchingClock = clockRanges.some(cr =>
     cr.startMinutes === entry.startMinutes && cr.endMinutes === entry.endMinutes
    );
@@ -991,16 +991,18 @@ export async function queryTimeLogEntries(journalDay: number): Promise<TimeLogEn
  return entries;
 }
 
-export function parseClockRanges(raw: string): Array<{ startMinutes: number; endMinutes: number }> {
+export function parseClockRanges(raw: string, filterDay?: number): Array<{ startMinutes: number; endMinutes: number }> {
  const logbookMatch = raw.match(/:LOGBOOK:([\s\S]*?):END:/i);
  if (!logbookMatch) return [];
-
  const ranges: Array<{ startMinutes: number; endMinutes: number }> = [];
- const matches = [...logbookMatch[1].matchAll(/CLOCK:\s*\[.*?(\d{2}):(\d{2}):\d{2}\]--\[.*?(\d{2}):(\d{2}):\d{2}\]/g)];
- for (const match of matches) {
+ const clockRe = /CLOCK:\s*\[(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):\d{2}\]--\[.*?(\d{2}):(\d{2}):\d{2}\]/g;
+ let cm: RegExpExecArray | null;
+ while ((cm = clockRe.exec(logbookMatch[1])) !== null) {
+  const clockDate = parseInt(cm[1]) * 10000 + parseInt(cm[2]) * 100 + parseInt(cm[3]);
+  if (filterDay !== undefined && clockDate !== filterDay) continue;
   ranges.push({
-   startMinutes: parseInt(match[1]) * 60 + parseInt(match[2]),
-   endMinutes: parseInt(match[3]) * 60 + parseInt(match[4]),
+   startMinutes: parseInt(cm[4]) * 60 + parseInt(cm[5]),
+   endMinutes: parseInt(cm[6]) * 60 + parseInt(cm[7]),
   });
  }
  return ranges;
