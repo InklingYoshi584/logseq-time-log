@@ -102,6 +102,7 @@ export default function App() {
  const autoClockRef = useRef<Set<string>>(new Set()); // entries already auto-processed
  const clockOutRef = useRef<Set<string>>(new Set());
  const manualMarkerRef = useRef<Map<string, string>>(new Map()); // original TODO markers
+ const shiftHeldRef = useRef(false);
  const gridScrollRef = useRef<HTMLDivElement | null>(null);
 
  const handleClose = useCallback(() => {
@@ -711,7 +712,7 @@ export default function App() {
 
 
 
-  const shiftKey = (event.activatorEvent as PointerEvent)?.shiftKey ?? false;
+  const shiftKey = shiftHeldRef.current;
   switch (data.type) {
    case "time-block": {
     if (!data.uuid || data.startMinutes === undefined || data.endMinutes === undefined) return;
