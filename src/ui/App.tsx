@@ -176,13 +176,11 @@ export default function App() {
    }
    await Promise.all(promises);
 
-   const pageResults = await queryAllTodos();
-   // Retry if DB not fully indexed on first boot
-   if (pageResults.length === 0) {
-     await new Promise(r => setTimeout(r, 600));
-     const retry = await queryAllTodos();
-     if (retry.length > 0) { pageResults.length = 0; pageResults.push(...retry); }
-   }
+   let pageResults = await queryAllTodos();
+   // DB might not be fully indexed on first boot — always retry once
+   await new Promise(r => setTimeout(r, 500));
+   const retry = await queryAllTodos();
+   if (retry.length > pageResults.length) pageResults = retry;
    const grouped = groupTodos(pageResults);
    setPageTodos(sortPageTodos(grouped.pages));
 
@@ -197,11 +195,10 @@ export default function App() {
       setDayLoading(true);
       let todos = await queryDayTodos(day);
       console.log("[init] dayTodos count:", todos.length, "day:", day);
-      if (todos.length === 0) {
-        await new Promise(r => setTimeout(r, 600));
-        todos = await queryDayTodos(day);
-        console.log("[init] retry dayTodos count:", todos.length, "day:", day);
-      }
+      await new Promise(r => setTimeout(r, 500));
+      const retry = await queryDayTodos(day);
+      console.log("[init] retry dayTodos count:", retry.length, "day:", day);
+      if (retry.length > todos.length) todos = retry;
       setDayTodos(todos);
       setDayLoading(false);
      }
