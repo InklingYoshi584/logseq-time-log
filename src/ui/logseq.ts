@@ -815,13 +815,14 @@ export function parseTimeLogEntry(raw: string, blockUuid: string, isClockEntry: 
  else if ((m = raw.match(PLAIN_RE))) { startMinutes = +m[1] * 60 + +m[2]; endMinutes = +m[3] * 60 + +m[4]; rest = m[5].trim(); }
  else if ((m = raw.match(OPEN_END_RE))) { startMinutes = +m[1] * 60 + +m[2]; endMinutes = null; rest = m[3].trim(); }
  else return null;
- // Error suffix: (+5) or (-3)
- let errorMinutes: number | undefined;
- const errMatch = rest.match(/\(([+-]?\d+)\)\s*$/);
- if (errMatch) { errorMinutes = parseInt(errMatch[1]); rest = rest.replace(/\([+-]?\d+\)\s*$/, "").trim(); }
+ // Extract ((uuid)) ref first (may be before error suffix)
  let todoUuid: string | undefined;
  const refMatch = rest.match(/\(\(([a-f0-9-]+)\)\)/);
  if (refMatch) { todoUuid = refMatch[1]; rest = rest.replace(/\(\([a-f0-9-]+\)\)/, "").trim(); }
+ // Error suffix: (+5) or (-3) — may appear after time, before or after ref
+ let errorMinutes: number | undefined;
+ const errMatch = rest.match(/\(([+-]?\d+)\)/);
+ if (errMatch) { errorMinutes = parseInt(errMatch[1]); rest = rest.replace(/\([+-]?\d+\)/, "").trim(); }
  return { uuid: blockUuid, startMinutes, endMinutes, activity: rest, todoUuid, isClockEntry, isScheduled: isScheduledStart || isScheduledEnd, isScheduledStart, isScheduledEnd, errorMinutes };
 }
 
