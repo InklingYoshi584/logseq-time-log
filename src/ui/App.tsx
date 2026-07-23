@@ -205,7 +205,7 @@ export default function App() {
 
 
  const syncToLogbook = async (entry: { todoUuid?: string; startMinutes: number; endMinutes: number }, oldStart?: number) => {
-  if (!entry.todoUuid || !selectedDay || entry.endMinutes === null) return;
+  if (!entry.todoUuid || !selectedDay || entry.endMinutes === null || (entry as TimeLogEntry).isScheduled) return;
   try {
    const block = await logseq.Editor.getBlock(entry.todoUuid);
    if (!block?.content) return;

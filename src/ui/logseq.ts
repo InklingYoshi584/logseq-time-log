@@ -939,7 +939,7 @@ export async function queryTimeLogEntries(journalDay: number): Promise<TimeLogEn
  // Post-process: resolve activity for task-linked entries with empty text
  // Sync: ensure all task-linked entries have matching CLOCK data
  for (const entry of entries) {
-  if (!entry.todoUuid || entry.endMinutes === null) continue;
+  if (!entry.todoUuid || entry.endMinutes === null || entry.isScheduled) continue;
   try {
    const block = await logseq.Editor.getBlock(entry.todoUuid);
    if (!block?.content) continue;
@@ -972,6 +972,29 @@ export async function queryTimeLogEntries(journalDay: number): Promise<TimeLogEn
    }
   } catch { /* skip */ }
  }
+
+  // Cleanup: remove CLOCK entries for scheduled blocks (planned !== actual)
+  for (const entry of entries) {
+    if (!entry.todoUuid || entry.endMinutes === null || !entry.isScheduled) continue;
+    try {
+      const block = await logseq.Editor.getBlock(entry.todoUuid);
+      if (!block?.content) continue;
+      const rawContent = String(block.content);
+      const y = Math.floor(journalDay / 10000);
+      const mo = String(Math.floor((journalDay % 10000) / 100)).padStart(2, "0");
+      const d = String(journalDay % 100).padStart(2, "0");
+      const sh = String(Math.floor(entry.startMinutes / 60)).padStart(2, "0");
+      const sm = String(entry.startMinutes % 60).padStart(2, "0");
+      const eh = String(Math.floor(entry.endMinutes / 60)).padStart(2, "0");
+      const em = String(entry.endMinutes % 60).padStart(2, "0");
+      const datePat = `${y}-${mo}-${d}`;
+      const re = new RegExp(`CLOCK:\\s*\\[${datePat}\\s+${sh}:${sm}:\\d{2}\\]--\\[${datePat}\\s+${eh}:${em}:\\d{2}\\].*\\n?`, "gi");
+      if (re.test(rawContent)) {
+        const cleaned = rawContent.replace(re, "");
+        await logseq.Editor.updateBlock(entry.todoUuid, cleaned);
+      }
+    } catch { /* skip */ }
+  }
 
  for (const entry of entries) {
   if (!entry.activity.trim() && entry.todoUuid) {
