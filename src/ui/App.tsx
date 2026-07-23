@@ -206,7 +206,7 @@ export default function App() {
 
 
  const syncToLogbook = async (entry: { todoUuid?: string; startMinutes: number; endMinutes: number }, oldStart?: number) => {
-  if (!entry.todoUuid || !selectedDay || entry.endMinutes === null || (entry as TimeLogEntry).isScheduled) return;
+  if (!entry.todoUuid || !selectedDay || entry.endMinutes === null) return;
   try {
    const block = await logseq.Editor.getBlock(entry.todoUuid);
    if (!block?.content) return;
@@ -293,7 +293,7 @@ export default function App() {
    await logseq.Editor.updateBlock(entry.uuid, newContent);
    updateEntryLocal(entry.uuid, { isScheduled: false, isScheduledStart: false, isScheduledEnd: false });
    if (entry.todoUuid && entry.endMinutes !== null) {
-    syncToLogbook({ todoUuid: entry.todoUuid, startMinutes: entry.startMinutes, endMinutes: entry.endMinutes });
+    syncToLogbook({ ...updated, todoUuid: entry.todoUuid, startMinutes: entry.startMinutes, endMinutes: entry.endMinutes });
     const origMarker = manualMarkerRef.current.get(entry.todoUuid);
     if (origMarker) { await changeMarker(entry.todoUuid, origMarker); manualMarkerRef.current.delete(entry.todoUuid); }
    }
