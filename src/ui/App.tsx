@@ -726,9 +726,17 @@ export default function App() {
      await logseq.Editor.updateBlock(data.uuid, formatTimeLogEntry(updated));
      updateEntryLocal(data.uuid, { startMinutes: newStart, endMinutes: newEnd, errorMinutes: newStart - data.startMinutes });
     } else {
-     await updateTimeLogEntry(data.uuid, newStart, newEnd);
-     updateEntryLocal(data.uuid, { startMinutes: newStart, endMinutes: newEnd });
-     if (e?.todoUuid) syncToLogbook({ ...e, startMinutes: newStart, endMinutes: newEnd }, data.startMinutes);
+     if (shiftKey && e) {
+      const err = newStart - (data.startMinutes ?? 0);
+      const updated = { ...e, startMinutes: newStart, endMinutes: newEnd, errorMinutes: err !== 0 ? err : undefined };
+      await logseq.Editor.updateBlock(data.uuid, formatTimeLogEntry(updated));
+      updateEntryLocal(data.uuid, { startMinutes: newStart, endMinutes: newEnd, errorMinutes: err !== 0 ? err : undefined });
+      if (e?.todoUuid) syncToLogbook({ ...e, startMinutes: newStart, endMinutes: newEnd }, data.startMinutes);
+     } else {
+      await updateTimeLogEntry(data.uuid, newStart, newEnd);
+      updateEntryLocal(data.uuid, { startMinutes: newStart, endMinutes: newEnd });
+      if (e?.todoUuid) syncToLogbook({ ...e, startMinutes: newStart, endMinutes: newEnd }, data.startMinutes);
+     }
     }
     if (selectedDay) setTimeout(() => queryDayTodos(selectedDay).then(setDayTodos), 150);
     break;
@@ -738,13 +746,13 @@ export default function App() {
     const rawStart = overMinutes !== null ? Math.max(0, Math.min(data.endMinutes - 5, overMinutes)) : (data.startMinutes ?? data.endMinutes - 25);
     const newStart = snapTo5(rawStart);
     if (newStart >= data.endMinutes - 5) return;
-    await updateTimeLogEntry(data.uuid, newStart, data.endMinutes);
-    updateEntryLocal(data.uuid, { startMinutes: newStart });
     const e = timeLogEntriesRef.current.find(en => en.uuid === data.uuid);
-    if (e?.isScheduled && shiftKey) {
-     const updated = { ...e, startMinutes: newStart, errorMinutes: newStart - (data.startMinutes ?? 0) };
+    if (shiftKey && e) {
+     const err = newStart - (data.startMinutes ?? 0);
+     const updated = { ...e, startMinutes: newStart, errorMinutes: err !== 0 ? err : undefined };
      await logseq.Editor.updateBlock(data.uuid, formatTimeLogEntry(updated));
-     updateEntryLocal(data.uuid, { startMinutes: newStart, errorMinutes: newStart - (data.startMinutes ?? 0) });
+     updateEntryLocal(data.uuid, { startMinutes: newStart, errorMinutes: err !== 0 ? err : undefined });
+     if (e?.todoUuid && data.endMinutes) syncToLogbook({ ...e, startMinutes: newStart, endMinutes: data.endMinutes }, data.startMinutes);
     } else {
      await updateTimeLogEntry(data.uuid, newStart, data.endMinutes);
      updateEntryLocal(data.uuid, { startMinutes: newStart });
@@ -778,9 +786,18 @@ export default function App() {
       if (e?.todoUuid && data.endMinutes) syncToLogbook({ ...e, startMinutes: data.startMinutes, endMinutes: newEnd }, data.startMinutes);
      }
     } else {
-     await updateTimeLogEntry(data.uuid, data.startMinutes, newEnd);
-     updateEntryLocal(data.uuid, { endMinutes: newEnd });
-     { if (e?.todoUuid && data.startMinutes !== undefined) syncToLogbook({ ...e, startMinutes: data.startMinutes, endMinutes: newEnd }, data.startMinutes); }
+     if (shiftKey && e) {
+      // Shift-resize completed block → recalculate error, update CLOCK
+      const err = newEnd - (data.endMinutes ?? e.endMinutes ?? newEnd);
+      const updated = { ...e, endMinutes: newEnd, errorMinutes: err !== 0 ? err : undefined };
+      await logseq.Editor.updateBlock(data.uuid, formatTimeLogEntry(updated));
+      updateEntryLocal(data.uuid, { endMinutes: newEnd, errorMinutes: err !== 0 ? err : undefined });
+      if (e?.todoUuid) syncToLogbook({ ...e, startMinutes: data.startMinutes!, endMinutes: newEnd }, data.startMinutes);
+     } else {
+      await updateTimeLogEntry(data.uuid, data.startMinutes, newEnd);
+      updateEntryLocal(data.uuid, { endMinutes: newEnd });
+      { if (e?.todoUuid && data.startMinutes !== undefined) syncToLogbook({ ...e, startMinutes: data.startMinutes, endMinutes: newEnd }, data.startMinutes); }
+     }
     }
     if (selectedDay) setTimeout(() => queryDayTodos(selectedDay).then(setDayTodos), 150);
     break;
