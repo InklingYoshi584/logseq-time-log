@@ -113,6 +113,14 @@ export default function TimeBlock({
     colorClass = "time-block--event";
   }
 
+  // Compute in-progress percentage for scheduled blocks
+  const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+  const isInProgress = entry.isScheduled && nowMins >= entry.startMinutes && (entry.endMinutes === null || nowMins < entry.endMinutes);
+  let progressPct = 100;
+  if (isInProgress && entry.endMinutes !== null) {
+    progressPct = Math.round(((nowMins - entry.startMinutes) / (entry.endMinutes - entry.startMinutes)) * 100);
+  }
+
   const classes = [
     "time-block",
     colorClass,
@@ -123,14 +131,6 @@ export default function TimeBlock({
   ]
     .filter(Boolean)
     .join(" ");
-
-  // Compute in-progress percentage for scheduled blocks
-  const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
-  const isInProgress = entry.isScheduled && nowMins >= entry.startMinutes && (entry.endMinutes === null || nowMins < entry.endMinutes);
-  let progressPct = 100;
-  if (isInProgress && entry.endMinutes !== null) {
-    progressPct = Math.round(((nowMins - entry.startMinutes) / (entry.endMinutes - entry.startMinutes)) * 100);
-  }
   const timeLabel = isOpenEnded
     ? `${formatHM(displayStart ?? entry.startMinutes)} - ...`
     : `${formatHM(displayStart ?? entry.startMinutes)} - ${formatHM(displayEnd ?? entry.endMinutes ?? 0)}`;
