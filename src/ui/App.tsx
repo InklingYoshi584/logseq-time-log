@@ -712,7 +712,7 @@ export default function App() {
 
 
 
-  const shiftKey = shiftHeldRef.current;
+  const shiftKey = shiftHeldRef.current; console.log("[shift-resize] shiftKey:", shiftKey, "type:", data.type);
   switch (data.type) {
    case "time-block": {
     if (!data.uuid || data.startMinutes === undefined || data.endMinutes === undefined) return;
