@@ -888,7 +888,21 @@ export default function App() {
    const content = formatTimeLogEntry(updated);
    await logseq.Editor.updateBlock(uuid, content);
    updateEntryLocal(uuid, { endMinutes: nowMins, isScheduled: false, isScheduledStart: false, isScheduledEnd: false, errorMinutes: endError });
-   if (e.todoUuid) syncToLogbook({ ...e, startMinutes: e.startMinutes, endMinutes: nowMins });
+   if (e.todoUuid) syncToLogbook({ todoUuid: e.todoUuid, startMinutes: e.startMinutes, endMinutes: nowMins, isScheduled: false });
+  } else if (e.isScheduled) {
+   // In-progress scheduled → manual complete with error
+   autoClockRef.current.add(uuid);
+   clockOutRef.current.add(uuid);
+   const endError = e.endMinutes - nowMins;
+   const updated = { ...e, endMinutes: nowMins, isScheduled: false, isScheduledStart: false, isScheduledEnd: false, errorMinutes: endError };
+   const content = formatTimeLogEntry(updated);
+   await logseq.Editor.updateBlock(uuid, content);
+   updateEntryLocal(uuid, { endMinutes: nowMins, isScheduled: false, isScheduledStart: false, isScheduledEnd: false, errorMinutes: endError });
+   if (e.todoUuid) {
+     syncToLogbook({ todoUuid: e.todoUuid, startMinutes: e.startMinutes, endMinutes: nowMins, isScheduled: false });
+     const origMarker = manualMarkerRef.current.get(e.todoUuid);
+     if (origMarker) { await changeMarker(e.todoUuid, origMarker); manualMarkerRef.current.delete(e.todoUuid); }
+   }
   } else {
    return; // regular completed block — no action
   }
