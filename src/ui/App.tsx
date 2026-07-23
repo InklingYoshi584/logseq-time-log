@@ -100,6 +100,7 @@ export default function App() {
  const [nativeDragState, setNativeDragState] = useState<{ uuid: string; content: string; startMinutes: number | null; shiftKey: boolean } | null>(null);
  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
  const autoClockRef = useRef<Set<string>>(new Set()); // entries already auto-processed
+ const clockOutRef = useRef<Set<string>>(new Set());
  const manualMarkerRef = useRef<Map<string, string>>(new Map()); // original TODO markers
  const gridScrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -301,28 +302,30 @@ export default function App() {
    const now = new Date();
    const nowMins = now.getHours() * 60 + now.getMinutes();
    const entries = timeLogEntriesRef.current;
-   const processed = new Set(autoClockRef.current);
+   const clockedIn = new Set(autoClockRef.current);
+   const clockedOut = new Set(clockOutRef.current);
    let changed = false;
    for (const entry of entries) {
-    if (!entry.isScheduled || processed.has(entry.uuid)) continue;
-    if (entry.isScheduledStart && nowMins >= entry.startMinutes) {
+    if (!entry.isScheduled) continue;
+    if (entry.isScheduledStart && nowMins >= entry.startMinutes && !clockedIn.has(entry.uuid)) {
      console.log("[auto-clock]", "clock in", entry.uuid, nowMins, ">=", entry.startMinutes);
-     processed.add(entry.uuid); changed = true;
+     clockedIn.add(entry.uuid); changed = true;
      await clockIn(entry);
     }
-    if (entry.isScheduledEnd && entry.endMinutes !== null && nowMins >= entry.endMinutes) {
+    if (entry.isScheduledEnd && entry.endMinutes !== null && nowMins >= entry.endMinutes && !clockedOut.has(entry.uuid)) {
      console.log("[auto-clock]", "clock out", entry.uuid, nowMins, ">=", entry.endMinutes);
-     processed.add(entry.uuid); changed = true;
+     clockedOut.add(entry.uuid); changed = true;
      await clockOut(entry);
     }
    }
-   autoClockRef.current = processed;
+   autoClockRef.current = clockedIn;
+   clockOutRef.current = clockedOut;
    if (changed) await refreshTimeLog();
   };
   // Initial check after entries likely loaded
   const initId = setTimeout(tick, 500);
   const intervalId = setInterval(tick, 10000);
-  return () => { clearTimeout(initId); clearInterval(intervalId); autoClockRef.current = new Set(); };
+  return () => { clearTimeout(initId); clearInterval(intervalId); autoClockRef.current = new Set(); clockOutRef.current = new Set(); };
  }, [activeTab, selectedDay]);
 
  /* ── Day selection ── */
