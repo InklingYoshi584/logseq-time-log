@@ -722,8 +722,9 @@ export default function App() {
     const e = timeLogEntriesRef.current.find(en => en.uuid === data.uuid);
     if (e?.isScheduled && !e.isScheduledStart && shiftKey) {
      // Shift-resize start on in-progress scheduled → error
-     updateEntryLocal(data.uuid, { startMinutes: newStart, errorMinutes: newStart - data.startMinutes });
-     await updateTimeLogEntry(data.uuid, newStart, newEnd);
+     const updated = { ...e, startMinutes: newStart, endMinutes: newEnd, errorMinutes: newStart - data.startMinutes };
+     await logseq.Editor.updateBlock(data.uuid, formatTimeLogEntry(updated));
+     updateEntryLocal(data.uuid, { startMinutes: newStart, endMinutes: newEnd, errorMinutes: newStart - data.startMinutes });
     } else {
      await updateTimeLogEntry(data.uuid, newStart, newEnd);
      updateEntryLocal(data.uuid, { startMinutes: newStart, endMinutes: newEnd });
@@ -741,9 +742,15 @@ export default function App() {
     updateEntryLocal(data.uuid, { startMinutes: newStart });
     const e = timeLogEntriesRef.current.find(en => en.uuid === data.uuid);
     if (e?.isScheduled && shiftKey) {
+     const updated = { ...e, startMinutes: newStart, errorMinutes: newStart - (data.startMinutes ?? 0) };
+     await logseq.Editor.updateBlock(data.uuid, formatTimeLogEntry(updated));
      updateEntryLocal(data.uuid, { startMinutes: newStart, errorMinutes: newStart - (data.startMinutes ?? 0) });
-    } else if (e?.todoUuid && data.endMinutes) {
-     syncToLogbook({ ...e, startMinutes: newStart, endMinutes: data.endMinutes }, data.startMinutes);
+    } else {
+     await updateTimeLogEntry(data.uuid, newStart, data.endMinutes);
+     updateEntryLocal(data.uuid, { startMinutes: newStart });
+     if (e?.todoUuid && data.endMinutes) {
+      syncToLogbook({ ...e, startMinutes: newStart, endMinutes: data.endMinutes }, data.startMinutes);
+     }
     }
     if (selectedDay) setTimeout(() => queryDayTodos(selectedDay).then(setDayTodos), 150);
     break;
@@ -759,13 +766,15 @@ export default function App() {
      // Scheduled: shift-resize → update plan if > now, else error + complete
      if (newEnd > nowMins && !shiftKey) {
       // Just update planned end time
-      await updateTimeLogEntry(data.uuid, data.startMinutes, newEnd);
+      const updated = { ...e, endMinutes: newEnd };
+      await logseq.Editor.updateBlock(data.uuid, formatTimeLogEntry(updated));
       updateEntryLocal(data.uuid, { endMinutes: newEnd });
      } else {
       // Complete with error
       const err = newEnd - (data.endMinutes ?? data.startMinutes + 25);
+      const updated = { ...e, endMinutes: newEnd, isScheduled: false, isScheduledStart: false, isScheduledEnd: false, errorMinutes: err };
+      await logseq.Editor.updateBlock(data.uuid, formatTimeLogEntry(updated));
       updateEntryLocal(data.uuid, { endMinutes: newEnd, isScheduled: false, isScheduledStart: false, isScheduledEnd: false, errorMinutes: err });
-      await updateTimeLogEntry(data.uuid, data.startMinutes, newEnd);
       if (e?.todoUuid && data.endMinutes) syncToLogbook({ ...e, startMinutes: data.startMinutes, endMinutes: newEnd }, data.startMinutes);
      }
     } else {
