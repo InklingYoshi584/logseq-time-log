@@ -838,6 +838,23 @@ export function formatTimeLogEntry(entry: TimeLogEntry): string {
  return (timePart + sfx).trim();
 }
 
+async function sortTimeLogChildren(timeLogUuid: string, entries: TimeLogEntry[]): Promise<void> {
+ if (entries.length < 2) return;
+ const sorted = [...entries].sort((a, b) => a.startMinutes - b.startMinutes);
+ // Check if already sorted
+ let needsSort = false;
+ for (let i = 0; i < entries.length; i++) {
+  if (entries[i].uuid !== sorted[i].uuid) { needsSort = true; break; }
+ }
+ if (!needsSort) return;
+ // Move each block after the previous one in sorted order
+ for (let i = 1; i < sorted.length; i++) {
+  try {
+   await logseq.Editor.moveBlock(sorted[i].uuid, sorted[i - 1].uuid, { before: false, children: false });
+  } catch { /* best effort */ }
+ }
+}
+
 export async function detectAndMerge(timeLogUuid: string): Promise<void> {
  // placeholder — implemented later
 }
@@ -995,6 +1012,9 @@ export async function queryTimeLogEntries(journalDay: number): Promise<TimeLogEn
    }
   } catch { /* skip */ }
  }
+
+ // Sort # Time Log children by start time
+ await sortTimeLogChildren(timeLogUuid, entries);
 
  for (const entry of entries) {
   if (!entry.activity.trim() && entry.todoUuid) {
