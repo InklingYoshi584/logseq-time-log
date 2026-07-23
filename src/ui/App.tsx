@@ -271,60 +271,62 @@ export default function App() {
 
  // Auto-clock: monitor scheduled entries
  useEffect(() => {
-  if (activeTab !== "timelog" || timeLogEntries.length === 0) return;
-  let timeoutId: ReturnType<typeof setTimeout>;
-  const process = async () => {
-   const now = new Date();
-   const nowMins = now.getHours() * 60 + now.getMinutes();
-   const processed = new Set(autoClockRef.current);
-   const latestEntries = timeLogEntriesRef.current;
-   for (const entry of latestEntries) {
-    if (!entry.isScheduled || processed.has(entry.uuid)) continue;
-    // Entry starts now or past → auto-clock in
-    if (entry.isScheduledStart && nowMins >= entry.startMinutes) {
-     processed.add(entry.uuid);
-     if (entry.todoUuid) {
-      try {
-       const b = await logseq.Editor.getBlock(entry.todoUuid);
-       if (b?.content) {
-        const raw = String(b.content);
-        const markerMatch = raw.match(/^(TODO|DOING|DONE|NOW|LATER|WAITING)\s/i);
-        if (markerMatch && markerMatch[1] !== "DOING" && markerMatch[1] !== "DONE") {
-         manualMarkerRef.current.set(entry.todoUuid, markerMatch[1]);
-         await changeMarker(entry.todoUuid, "DOING");
-        }
-       }
-      } catch { /* skip */ }
+  if (activeTab !== "timelog") return;
+  let lastCheck = 0;
+  const clockIn = async (entry: TimeLogEntry) => {
+   if (!entry.todoUuid) return;
+   try {
+    const b = await logseq.Editor.getBlock(entry.todoUuid);
+    if (b?.content) {
+     const raw = String(b.content);
+     const markerMatch = raw.match(/^(TODO|DOING|DONE|NOW|LATER|WAITING)\s/i);
+     if (markerMatch && markerMatch[1] !== "DOING" && markerMatch[1] !== "DONE") {
+      manualMarkerRef.current.set(entry.todoUuid, markerMatch[1]);
+      await changeMarker(entry.todoUuid, "DOING");
      }
     }
-    // Entry ends now or past → auto-clock out
+   } catch { /* skip */ }
+  };
+  const clockOut = async (entry: TimeLogEntry) => {
+   const updated = { ...entry, isScheduled: false, isScheduledStart: false, isScheduledEnd: false };
+   const newContent = formatTimeLogEntry(updated);
+   await logseq.Editor.updateBlock(entry.uuid, newContent);
+   updateEntryLocal(entry.uuid, { isScheduled: false, isScheduledStart: false, isScheduledEnd: false });
+   if (entry.todoUuid && entry.endMinutes !== null) {
+    syncToLogbook({ todoUuid: entry.todoUuid, startMinutes: entry.startMinutes, endMinutes: entry.endMinutes });
+    const origMarker = manualMarkerRef.current.get(entry.todoUuid);
+    if (origMarker) { await changeMarker(entry.todoUuid, origMarker); manualMarkerRef.current.delete(entry.todoUuid); }
+   }
+  };
+  const tick = async () => {
+   const now = new Date();
+   const nowMins = now.getHours() * 60 + now.getMinutes();
+   // Avoid double-processing within same minute
+   if (nowMins === lastCheck) return;
+   lastCheck = nowMins;
+   const entries = timeLogEntriesRef.current;
+   const processed = new Set(autoClockRef.current);
+   let changed = false;
+   for (const entry of entries) {
+    if (!entry.isScheduled || processed.has(entry.uuid)) continue;
+    if (entry.isScheduledStart && nowMins >= entry.startMinutes) {
+     console.log("[auto-clock]", "clock in", entry.uuid, nowMins, ">=", entry.startMinutes);
+     processed.add(entry.uuid); changed = true;
+     await clockIn(entry);
+    }
     if (entry.isScheduledEnd && entry.endMinutes !== null && nowMins >= entry.endMinutes) {
-     processed.add(entry.uuid);
-     // Complete: remove parens, write CLOCK
-     const updated = { ...entry, isScheduled: false, isScheduledStart: false, isScheduledEnd: false };
-     const newContent = formatTimeLogEntry(updated);
-     await logseq.Editor.updateBlock(entry.uuid, newContent);
-     updateEntryLocal(entry.uuid, { isScheduled: false, isScheduledStart: false, isScheduledEnd: false });
-     if (entry.todoUuid && entry.endMinutes !== null) {
-      syncToLogbook({ todoUuid: entry.todoUuid, startMinutes: entry.startMinutes, endMinutes: entry.endMinutes });
-      // Restore original marker
-      const origMarker = manualMarkerRef.current.get(entry.todoUuid);
-      if (origMarker) {
-       await changeMarker(entry.todoUuid, origMarker);
-       manualMarkerRef.current.delete(entry.todoUuid);
-      }
-     }
+     console.log("[auto-clock]", "clock out", entry.uuid, nowMins, ">=", entry.endMinutes);
+     processed.add(entry.uuid); changed = true;
+     await clockOut(entry);
     }
    }
    autoClockRef.current = processed;
-   // Schedule next check: next 5-min boundary + 10s
-   const nextCheck = (Math.floor(nowMins / 5) + 1) * 5;
-   const delay = ((nextCheck - nowMins) * 60 + 10) * 1000;
-   timeoutId = setTimeout(process, Math.max(10000, delay));
+   if (changed) await refreshTimeLog();
   };
-  timeoutId = setTimeout(process, 0);
-  return () => clearTimeout(timeoutId);
- }, [activeTab, timeLogEntries.length, selectedDay]);
+  tick(); // immediate check
+  const intervalId = setInterval(tick, 10000);
+  return () => { clearInterval(intervalId); autoClockRef.current = new Set(); };
+ }, [activeTab, selectedDay]);
 
  /* ── Day selection ── */
  const handleSelectDay = useCallback(async (day: number) => {
