@@ -1035,7 +1035,7 @@ html, body, #root {
   color: var(--text-muted);
   font-family: var(--font-mono);
   padding-left: 4px;
-  height: 14px;
+  padding-top: 3px;
   line-height: 14px;
 }
 .time-grid-marker::after {
@@ -1050,7 +1050,7 @@ html, body, #root {
   color: var(--text-secondary);
 }
 .time-grid-marker--hour::after {
-  top: 50%;
+  top: 0;
   height: 1px;
   background: var(--text-muted);
   opacity: 0.5;
@@ -1059,13 +1059,13 @@ html, body, #root {
   color: var(--text-muted);
 }
 .time-grid-marker--half::after {
-  top: 50%;
+  top: 0;
   height: 1px;
   background: var(--border);
   opacity: 0.6;
 }
 .time-grid-marker--quarter::after {
-  top: 50%;
+  top: 0;
   height: 1px;
   background: var(--border);
   opacity: 0.45;
