@@ -838,7 +838,7 @@ export function formatTimeLogEntry(entry: TimeLogEntry): string {
  return (timePart + sfx).trim();
 }
 
-async function sortTimeLogChildren(timeLogUuid: string, entries: TimeLogEntry[]): Promise<void> {
+export async function sortTimeLogChildren(timeLogUuid: string, entries: TimeLogEntry[]): Promise<void> {
  if (entries.length < 2) return;
  const sorted = [...entries].sort((a, b) => a.startMinutes - b.startMinutes);
  // Check if already sorted

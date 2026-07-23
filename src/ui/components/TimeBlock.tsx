@@ -119,10 +119,18 @@ export default function TimeBlock({
     isSelected ? "time-block--selected" : "",
     actualHeight < 15 ? "time-block--thin" : "",
     entry.isScheduled ? "time-block--scheduled" : "",
+    isInProgress ? "time-block--in-progress" : "",
   ]
     .filter(Boolean)
     .join(" ");
 
+  // Compute in-progress percentage for scheduled blocks
+  const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+  const isInProgress = entry.isScheduled && nowMins >= entry.startMinutes && (entry.endMinutes === null || nowMins < entry.endMinutes);
+  let progressPct = 100;
+  if (isInProgress && entry.endMinutes !== null) {
+    progressPct = Math.round(((nowMins - entry.startMinutes) / (entry.endMinutes - entry.startMinutes)) * 100);
+  }
   const timeLabel = isOpenEnded
     ? `${formatHM(displayStart ?? entry.startMinutes)} - ...`
     : `${formatHM(displayStart ?? entry.startMinutes)} - ${formatHM(displayEnd ?? entry.endMinutes ?? 0)}`;
@@ -139,7 +147,7 @@ export default function TimeBlock({
     <div
       className={classes}
       data-block-uuid={entry.uuid}
-      style={style}
+      style={isInProgress ? { ...style, "--progress-pct": `${progressPct}%` } as React.CSSProperties : style}
       onClick={(e) => {
         e.stopPropagation();
         onSelect(entry.uuid);
