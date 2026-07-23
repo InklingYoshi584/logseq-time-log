@@ -846,6 +846,7 @@ export async function queryTimeLogEntries(journalDay: number): Promise<TimeLogEn
  let pageName = await resolveJournalPageName(journalDay);
  if (!pageName) {
   pageName = String(journalDay);
+  await logseq.Editor.createPage(pageName, {}, { journal: true, createFirstBlock: false });
  }
  const timeLogUuid = await findOrCreateTimeLogBlock(pageName);
  if (!timeLogUuid) return [];
