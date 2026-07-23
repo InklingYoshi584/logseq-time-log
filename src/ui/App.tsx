@@ -111,6 +111,8 @@ export default function App() {
 
  useEffect(() => {
   const onKeyDown = (e: KeyboardEvent) => {
+   if (e.key === "Shift") { shiftHeldRef.current = true; console.log("[shift] DOWN"); return; }
+   console.log("[keydown]", e.key);
    if (e.key === "Escape") {
     if (selectedBlockUuid !== null) {
      setSelectedBlockUuid(null);
@@ -126,7 +128,9 @@ export default function App() {
    }
   };
   window.addEventListener("keydown", onKeyDown);
-  return () => window.removeEventListener("keydown", onKeyDown);
+  const onKeyUp = (e: KeyboardEvent) => { if (e.key === "Shift") { shiftHeldRef.current = false; console.log("[shift] UP"); } };
+  window.addEventListener("keyup", onKeyUp);
+  return () => { window.removeEventListener("keydown", onKeyDown); window.removeEventListener("keyup", onKeyUp); };
  }, [handleClose, selectedDay, selectedPage, selectedBlockUuid]);
 
  const timeLogSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
