@@ -272,7 +272,6 @@ export default function App() {
  // Auto-clock: monitor scheduled entries
  useEffect(() => {
   if (activeTab !== "timelog") return;
-  let lastCheck = 0;
   const clockIn = async (entry: TimeLogEntry) => {
    if (!entry.todoUuid) return;
    try {
@@ -301,9 +300,6 @@ export default function App() {
   const tick = async () => {
    const now = new Date();
    const nowMins = now.getHours() * 60 + now.getMinutes();
-   // Avoid double-processing within same minute
-   if (nowMins === lastCheck) return;
-   lastCheck = nowMins;
    const entries = timeLogEntriesRef.current;
    const processed = new Set(autoClockRef.current);
    let changed = false;
@@ -323,9 +319,10 @@ export default function App() {
    autoClockRef.current = processed;
    if (changed) await refreshTimeLog();
   };
-  tick(); // immediate check
+  // Initial check after entries likely loaded
+  const initId = setTimeout(tick, 500);
   const intervalId = setInterval(tick, 10000);
-  return () => { clearInterval(intervalId); autoClockRef.current = new Set(); };
+  return () => { clearTimeout(initId); clearInterval(intervalId); autoClockRef.current = new Set(); };
  }, [activeTab, selectedDay]);
 
  /* ── Day selection ── */
