@@ -132,10 +132,8 @@ export default function DayDetail({
     const overSection = findSectionFor(sections, overId);
 
     if (activeSection === overSection && activeUuid !== overId) {
-      console.log("[time-log] reorder within", activeSection, activeUuid, "→", overId);
       onReorder(activeUuid, overId);
     } else if (activeSection !== overSection && overSection) {
-      console.log("[time-log] cross-section drop", activeSection, "→", overSection);
       const targetPriority = priorityFromKey(overSection);
       onChangePriority(activeUuid, targetPriority);
     }

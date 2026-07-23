@@ -111,8 +111,7 @@ export default function App() {
 
  useEffect(() => {
   const onKeyDown = (e: KeyboardEvent) => {
-   if (e.key === "Shift") { shiftHeldRef.current = true; console.log("[shift] DOWN"); return; }
-   console.log("[keydown]", e.key);
+   if (e.key === "Shift") { shiftHeldRef.current = true; return; }
    if (e.key === "Escape") {
     if (selectedBlockUuid !== null) {
      setSelectedBlockUuid(null);
@@ -128,7 +127,7 @@ export default function App() {
    }
   };
   window.addEventListener("keydown", onKeyDown);
-  const onKeyUp = (e: KeyboardEvent) => { if (e.key === "Shift") { shiftHeldRef.current = false; console.log("[shift] UP"); } };
+  const onKeyUp = (e: KeyboardEvent) => { if (e.key === "Shift") { shiftHeldRef.current = false; } };
   window.addEventListener("keyup", onKeyUp);
   return () => { window.removeEventListener("keydown", onKeyDown); window.removeEventListener("keyup", onKeyUp); };
  }, [handleClose, selectedDay, selectedPage, selectedBlockUuid]);
@@ -183,16 +182,15 @@ export default function App() {
 
    // Auto-select today
    if (selectedDay === null) {
-    console.log("[time-log] auto-selecting today...");
     try {
      const stateToday = await logseq.App.getStateFromStore("today") as unknown;
-     console.log("[time-log] state today:", stateToday);
      const day = parseLogseqDate(stateToday);
      if (day) {
       console.log("[time-log] auto-selecting day:", day);
       setSelectedDay(day);
       setDayLoading(true);
       const todos = await queryDayTodos(day);
+      console.log("[init] dayTodos count:", todos.length, "day:", day);
       setDayTodos(todos);
       setDayLoading(false);
      }
@@ -315,12 +313,10 @@ export default function App() {
    for (const entry of entries) {
     if (!entry.isScheduled) continue;
     if (entry.isScheduledStart && nowMins >= entry.startMinutes && !clockedIn.has(entry.uuid)) {
-     console.log("[auto-clock]", "clock in", entry.uuid, nowMins, ">=", entry.startMinutes);
      clockedIn.add(entry.uuid); changed = true;
      await clockIn(entry);
     }
     if (entry.isScheduledEnd && entry.endMinutes !== null && nowMins >= entry.endMinutes && !clockedOut.has(entry.uuid)) {
-     console.log("[auto-clock]", "clock out", entry.uuid, nowMins, ">=", entry.endMinutes);
      clockedOut.add(entry.uuid); changed = true;
      await clockOut(entry);
     }
@@ -425,7 +421,6 @@ export default function App() {
   console.log("[time-log] handleReorder:", activeUuid, overUuid);
   try {
    await logseq.Editor.moveBlock(activeUuid, overUuid, { before: false });
-   console.log("[time-log] moveBlock done");
    // Swap locally to avoid losing manual order from re-query sort
    setDayTodos((prev) => {
     const idx1 = prev.findIndex((t) => t.uuid === activeUuid);
@@ -456,14 +451,12 @@ export default function App() {
     }
    }
    if (!rawContent || typeof rawContent !== "string") return;
-   console.log("[time-log] changePriority:", { blockUuid, targetUuid, priority, rawContent });
    // Replace or add priority tag, preserve the rest
    let body = rawContent.replace(/\[#(A|B|C)\]\s*/g, "").trim();
    if (priority) {
     body = body.replace(/^(TODO|DOING|DONE|NOW|LATER|WAITING)\s+/, `$1 [#${priority}] `);
     if (!body.includes("[#")) body = `[#${priority}] ${body}`;
    }
-   console.log("[time-log] changePriority new content:", body);
    await logseq.Editor.updateBlock(targetUuid, body);
    if (selectedDay !== null) {
     const todos = await queryDayTodos(selectedDay);

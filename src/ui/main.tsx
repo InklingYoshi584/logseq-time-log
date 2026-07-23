@@ -9,8 +9,6 @@ const CLOCK_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="1
 async function applyAccentColor() {
   try {
     const config = await logseq.App.getUserConfigs();
-    console.log("[time-log] user config:", config);
-
     // Try known accent color keys
     const accent =
       (config as Record<string, unknown>)["preferredAccentColor"] ??
