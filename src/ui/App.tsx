@@ -272,12 +272,13 @@ export default function App() {
  // Auto-clock: monitor scheduled entries
  useEffect(() => {
   if (activeTab !== "timelog" || timeLogEntries.length === 0) return;
-  const now = new Date();
-  const nowMins = now.getHours() * 60 + now.getMinutes();
   let timeoutId: ReturnType<typeof setTimeout>;
   const process = async () => {
+   const now = new Date();
+   const nowMins = now.getHours() * 60 + now.getMinutes();
    const processed = new Set(autoClockRef.current);
-   for (const entry of timeLogEntries) {
+   const latestEntries = timeLogEntriesRef.current;
+   for (const entry of latestEntries) {
     if (!entry.isScheduled || processed.has(entry.uuid)) continue;
     // Entry starts now or past → auto-clock in
     if (entry.isScheduledStart && nowMins >= entry.startMinutes) {
@@ -323,7 +324,7 @@ export default function App() {
   };
   timeoutId = setTimeout(process, 0);
   return () => clearTimeout(timeoutId);
- }, [activeTab, timeLogEntries, selectedDay]);
+ }, [activeTab, timeLogEntries.length, selectedDay]);
 
  /* ── Day selection ── */
  const handleSelectDay = useCallback(async (day: number) => {
