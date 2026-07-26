@@ -88,6 +88,7 @@ export default function App() {
  const dragStartPixelRef = useRef<number | null>(null);
  const [dragStartMinutes, setDragStartMinutes] = useState<number | null>(null);
  const [selectedBlockUuid, setSelectedBlockUuid] = useState<string | null>(null);
+ const [editingBlockUuid, setEditingBlockUuid] = useState<string | null>(null);
  const [createModalOpen, setCreateModalOpen] = useState(false);
  const [createModalRange, setCreateModalRange] = useState<{ start: number; end: number } | null>(null);
  const [createModalName, setCreateModalName] = useState("");
