@@ -94,7 +94,7 @@ export default function App() {
  const [createModalName, setCreateModalName] = useState("");
  const calcHourHeight = (subtract = 0) => {
    const vh = window.innerHeight || 800;
-   return Math.max(30, Math.round(Math.max(400, vh - subtract) / 24));
+   return Math.max(30, Math.round(Math.max(400, vh - subtract) / 24.25));
   };
   const [timeLogHourHeight, setTimeLogHourHeight] = useState(() => calcHourHeight(80));
   const defaultHourHeightRef = useRef(calcHourHeight(80));
