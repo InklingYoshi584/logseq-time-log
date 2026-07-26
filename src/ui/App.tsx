@@ -108,8 +108,7 @@ export default function App() {
    setTimeLogHourHeight(h);
    defaultHourHeightRef.current = h;
   }, [activeTab, selectedDay]);
-  const defaultHourHeightRef = useRef(calcDefaultHourHeight());
- const [resizeState, setResizeState] = useState<{ uuid: string; type: "top" | "bottom"; minutes: number } | null>(null);
+  const [resizeState, setResizeState] = useState<{ uuid: string; type: "top" | "bottom"; minutes: number } | null>(null);
  const [createState, setCreateState] = useState<{ startMinutes: number; endMinutes: number } | null>(null);
  const [moveState, setMoveState] = useState<{ uuid: string; startMinutes: number } | null>(null);
  const [nativeDragState, setNativeDragState] = useState<{ uuid: string; content: string; startMinutes: number | null; shiftKey: boolean } | null>(null);

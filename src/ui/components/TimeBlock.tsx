@@ -86,10 +86,10 @@ export default function TimeBlock({
   });
 
   // Click vs drag detection for open-ended blocks
-  const pointerStartRef = useRef({ x: 0, y: 0 });
+  const pointerStartRef = useRef<{ x: number; y: number; shiftKey: boolean }>({ x: 0, y: 0, shiftKey: false });
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    pointerStartRef.current = { x: e.clientX, y: e.clientY, shiftKey: e.shiftKey } as { x: number; y: number; shiftKey: boolean };
+    pointerStartRef.current = { x: e.clientX, y: e.clientY, shiftKey: e.shiftKey };
   }, []);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
