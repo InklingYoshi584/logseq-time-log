@@ -89,7 +89,7 @@ export default function TimeBlock({
   const pointerStartRef = useRef({ x: 0, y: 0 });
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    pointerStartRef.current = { x: e.clientX, y: e.clientY, shiftKey: e.shiftKey };
+    pointerStartRef.current = { x: e.clientX, y: e.clientY, shiftKey: e.shiftKey } as { x: number; y: number; shiftKey: boolean };
   }, []);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {

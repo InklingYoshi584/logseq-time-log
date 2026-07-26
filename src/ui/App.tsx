@@ -92,18 +92,21 @@ export default function App() {
  const [createModalOpen, setCreateModalOpen] = useState(false);
  const [createModalRange, setCreateModalRange] = useState<{ start: number; end: number } | null>(null);
  const [createModalName, setCreateModalName] = useState("");
- const calcDefaultHourHeight = (offset = 0) => {
+ const calcHourHeight = (subtract = 0) => {
    const vh = window.innerHeight || 800;
-   return Math.max(30, Math.round((Math.max(400, vh - offset)) / 24));
+   return Math.max(30, Math.round(Math.max(400, vh - subtract) / 24));
   };
-  const [timeLogHourHeight, setTimeLogHourHeight] = useState(() => calcDefaultHourHeight());
+  const [timeLogHourHeight, setTimeLogHourHeight] = useState(() => calcHourHeight(80));
+  const defaultHourHeightRef = useRef(calcHourHeight(80));
+  
   useEffect(() => {
    const header = document.querySelector('.header-bar') as HTMLElement | null;
-   const timeLogHeader = document.querySelector('.time-log-header') as HTMLElement | null;
-   const offset = (header?.offsetHeight || 35) + (timeLogHeader?.offsetHeight || 35);
-   const h = calcDefaultHourHeight(offset);
+   const tlHeader = document.querySelector('.time-log-header') as HTMLElement | null;
+   const offset = (header?.offsetHeight || 35) + (tlHeader?.offsetHeight || 35);
+   const h = calcHourHeight(offset);
    console.log("[zoom] recalc hourHeight:", h, "vh:", window.innerHeight, "offset:", offset);
    setTimeLogHourHeight(h);
+   defaultHourHeightRef.current = h;
   }, [activeTab, selectedDay]);
   const defaultHourHeightRef = useRef(calcDefaultHourHeight());
  const [resizeState, setResizeState] = useState<{ uuid: string; type: "top" | "bottom"; minutes: number } | null>(null);
@@ -118,8 +121,7 @@ export default function App() {
  const gridScrollRef = useRef<HTMLDivElement | null>(null);
 
  useEffect(() => { timeLogEntriesRef.current = timeLogEntries; }, [timeLogEntries]);
- useEffect(() => { defaultHourHeightRef.current = calcDefaultHourHeight(); });
-
+ 
  useEffect(() => { timeLogEntriesRef.current = timeLogEntries; }, [timeLogEntries]);
  useEffect(() => { defaultHourHeightRef.current = calcDefaultHourHeight(); });
  const handleClose = useCallback(() => {
@@ -1005,7 +1007,7 @@ const handleSelectDay = useCallback(async (day: number) => {
    journalDay={selectedDay ?? Math.floor(new Date().getFullYear() * 10000 + (new Date().getMonth() + 1) * 100 + new Date().getDate())}
    gridRef={gridScrollRef}
    hourHeight={timeLogHourHeight}
-   defaultHourHeight={calcDefaultHourHeight()}
+   defaultHourHeight={defaultHourHeightRef.current}
    onHourHeightChange={setTimeLogHourHeight}
    resizeState={resizeState}
    createState={createState}
