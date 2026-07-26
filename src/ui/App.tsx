@@ -96,7 +96,11 @@ export default function App() {
    const vh = window.innerHeight || 800;
    return Math.max(30, Math.round((vh - 50) / 24));
   };
-  const [timeLogHourHeight, setTimeLogHourHeight] = useState(() => calcDefaultHourHeight());
+  const [timeLogHourHeight, setTimeLogHourHeight] = useState(() => {
+   const h = calcDefaultHourHeight();
+   console.log("[zoom] default hourHeight:", h, "from vh:", window.innerHeight);
+   return h;
+  });
   const defaultHourHeightRef = useRef(calcDefaultHourHeight());
  const [resizeState, setResizeState] = useState<{ uuid: string; type: "top" | "bottom"; minutes: number } | null>(null);
  const [createState, setCreateState] = useState<{ startMinutes: number; endMinutes: number } | null>(null);
