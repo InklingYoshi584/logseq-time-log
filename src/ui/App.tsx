@@ -92,14 +92,17 @@ export default function App() {
  const [createModalOpen, setCreateModalOpen] = useState(false);
  const [createModalRange, setCreateModalRange] = useState<{ start: number; end: number } | null>(null);
  const [createModalName, setCreateModalName] = useState("");
- const calcDefaultHourHeight = () => {
+ const calcDefaultHourHeight = (offset = 0) => {
    const vh = window.innerHeight || 800;
-   return Math.max(30, Math.round((vh - 50) / 24));
+   return Math.max(30, Math.round((Math.max(400, vh - offset)) / 24));
   };
   const [timeLogHourHeight, setTimeLogHourHeight] = useState(() => calcDefaultHourHeight());
   useEffect(() => {
-   const h = calcDefaultHourHeight();
-   console.log("[zoom] recalc hourHeight:", h, "vh:", window.innerHeight);
+   const header = document.querySelector('.header-bar') as HTMLElement | null;
+   const timeLogHeader = document.querySelector('.time-log-header') as HTMLElement | null;
+   const offset = (header?.offsetHeight || 35) + (timeLogHeader?.offsetHeight || 35);
+   const h = calcDefaultHourHeight(offset);
+   console.log("[zoom] recalc hourHeight:", h, "vh:", window.innerHeight, "offset:", offset);
    setTimeLogHourHeight(h);
   }, [activeTab, selectedDay]);
   const defaultHourHeightRef = useRef(calcDefaultHourHeight());
