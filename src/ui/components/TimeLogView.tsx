@@ -123,7 +123,7 @@ export default function TimeLogView({
       −
      </button>
      <span className="time-log-zoom-label">
-      {Math.round((hourHeight / 30) * 100)}%
+      {Math.round((hourHeight / defaultHourHeight) * 100)}%
      </span>
      <button
       className="time-log-zoom-btn"
