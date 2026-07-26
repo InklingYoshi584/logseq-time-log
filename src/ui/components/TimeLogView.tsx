@@ -9,6 +9,7 @@ interface TimeLogViewProps {
  gridRef?: React.RefObject<HTMLDivElement>;
  loading: boolean;
  hourHeight: number;
+ defaultHourHeight?: number;
  onHourHeightChange: (h: number) => void;
  resizeState: { uuid: string; type: "top" | "bottom"; minutes: number } | null;
  createState?: { startMinutes: number; endMinutes: number } | null;
@@ -56,6 +57,7 @@ export default function TimeLogView({
  loading,
  gridRef: propGridRef,
  hourHeight,
+ defaultHourHeight = 60,
  onHourHeightChange,
  resizeState,
  createState,
