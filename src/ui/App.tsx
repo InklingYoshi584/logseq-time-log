@@ -92,7 +92,11 @@ export default function App() {
  const [createModalOpen, setCreateModalOpen] = useState(false);
  const [createModalRange, setCreateModalRange] = useState<{ start: number; end: number } | null>(null);
  const [createModalName, setCreateModalName] = useState("");
- const [timeLogHourHeight, setTimeLogHourHeight] = useState(60);
+ const [timeLogHourHeight, setTimeLogHourHeight] = useState(() => {
+   // Default: 24h fits viewport
+   const vh = window.innerHeight || 800;
+   return Math.max(30, Math.round((vh - 50) / 24));
+  });
  const [resizeState, setResizeState] = useState<{ uuid: string; type: "top" | "bottom"; minutes: number } | null>(null);
  const [editingBlockUuid, setEditingBlockUuid] = useState<string | null>(null);
  const [createState, setCreateState] = useState<{ startMinutes: number; endMinutes: number } | null>(null);
