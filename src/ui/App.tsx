@@ -584,7 +584,7 @@ export default function App() {
   const blockUuid = await findOrCreateTimeLogBlock(pageName);
   // Past drop → completed; future drop → scheduled
   const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
-  const scheduled = isFuture ?? (startMinutes > nowMins);
+  const scheduled = isFuture ?? (endMinutes > nowMins);
   const content = formatTimeLogEntry({
    uuid: "", startMinutes, endMinutes, activity: "", todoUuid: resolvedUuid,
    isClockEntry: false, isScheduled: scheduled, isScheduledStart: scheduled,
@@ -605,7 +605,7 @@ export default function App() {
   await logseq.Editor.createPage(pageName, {}, { journal: true, createFirstBlock: false });
   const blockUuid = await findOrCreateTimeLogBlock(pageName);
   const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
-  const scheduled = startMinutes > nowMins;
+  const scheduled = endMinutes > nowMins;
   const content = formatTimeLogEntry({
    uuid: "", startMinutes, endMinutes, activity,
    isClockEntry: false, isScheduled: scheduled, isScheduledStart: scheduled, isScheduledEnd: scheduled,
@@ -636,7 +636,7 @@ export default function App() {
  const handleDropOnTimeLog = useCallback(async (uuid: string, startMinutes: number) => {
   const endMinutes = Math.min(24 * 60, snapTo5(startMinutes + 25));
   const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
-  await createTimeLogEntryLoc(uuid, snapTo5(startMinutes), endMinutes, startMinutes > nowMins);
+  await createTimeLogEntryLoc(uuid, snapTo5(startMinutes), endMinutes, endMinutes > nowMins);
   setNativeDragState(null);
  }, [createTimeLogEntryLoc]);
 
@@ -815,7 +815,7 @@ export default function App() {
     const startMinutes = startMinutesValue ?? computeDefaultMinutes();
     const endMinutes = snapTo5(overMinutes !== null ? Math.max(startMinutes + 5, Math.min(24 * 60, overMinutes)) : startMinutes + 25);
     const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
-    const scheduled = startMinutes > nowMins;
+    const scheduled = endMinutes > nowMins;
     const pageName = await resolveJournalPageName(selectedDay)
      ?? `${Math.floor(selectedDay / 10000)}${String(Math.floor((selectedDay % 10000) / 100)).padStart(2, "0")}${String(selectedDay % 100).padStart(2, "0")}`;
     const blockUuid = await findOrCreateTimeLogBlock(pageName);
