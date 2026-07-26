@@ -92,26 +92,24 @@ export default function App() {
  const [createModalOpen, setCreateModalOpen] = useState(false);
  const [createModalRange, setCreateModalRange] = useState<{ start: number; end: number } | null>(null);
  const [createModalName, setCreateModalName] = useState("");
- const calcHourHeight = (subtract = 0) => {
-   const vh = window.innerHeight || 800;
-   return Math.max(30, Math.round(Math.max(400, vh - subtract) / 24.25));
+ const calcGridHeight = () => {
+   const scrollEl = document.querySelector('.time-grid-scroll') as HTMLElement | null;
+   const avail = scrollEl?.clientHeight || (window.innerHeight || 800) - 80;
+   return Math.max(30, Math.round(avail / 24));
   };
-  const [timeLogHourHeight, setTimeLogHourHeight] = useState(() => calcHourHeight(80));
+  const [timeLogHourHeight, setTimeLogHourHeight] = useState(() => calcGridHeight());
   const defaultHourHeightRef = useRef(calcHourHeight(80));
   
   useEffect(() => {
-   const header = document.querySelector('.header-bar') as HTMLElement | null;
-   const tlHeader = document.querySelector('.time-log-header') as HTMLElement | null;
-   const offset = (header?.offsetHeight || 35) + (tlHeader?.offsetHeight || 35);
-   const h = calcHourHeight(offset);
-   console.log("[zoom] recalc hourHeight:", h, "vh:", window.innerHeight, "offset:", offset);
+   const h = calcGridHeight();
+   console.log("[zoom] recalc hourHeight:", h, "avail:", document.querySelector(".time-grid-scroll")?.clientHeight);
    setTimeLogHourHeight(h);
    defaultHourHeightRef.current = h;
   }, [activeTab, selectedDay]);
   
   useEffect(() => {
    const onResize = () => {
-    const h = calcHourHeight(80);
+    const h = calcGridHeight();
     setTimeLogHourHeight(h);
     defaultHourHeightRef.current = h;
    };
