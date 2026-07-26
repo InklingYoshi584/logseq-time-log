@@ -296,10 +296,11 @@ export default function App() {
      if (markerMatch && markerMatch[1] !== "DOING" && markerMatch[1] !== "DONE") {
       manualMarkerRef.current.set(entry.todoUuid, markerMatch[1]);
       await changeMarker(entry.todoUuid, "DOING");
+       if (selectedDay) queryDayTodos(selectedDay).then(setDayTodos);
+      }
      }
-    }
-   } catch { /* skip */ }
-  };
+    } catch { /* skip */ }
+   };
   const clockOut = async (entry: TimeLogEntry) => {
    const updated = { ...entry, isScheduled: false, isScheduledStart: false, isScheduledEnd: false };
    const newContent = formatTimeLogEntry(updated);
@@ -331,7 +332,7 @@ export default function App() {
    }
    autoClockRef.current = clockedIn;
    clockOutRef.current = clockedOut;
-   if (changed) await refreshTimeLog();
+   if (changed) { await refreshTimeLog(); if (selectedDay) queryDayTodos(selectedDay).then(setDayTodos); }
   };
   // Initial check after entries likely loaded
   const initId = setTimeout(tick, 500);
