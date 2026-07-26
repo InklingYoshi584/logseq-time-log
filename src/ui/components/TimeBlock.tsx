@@ -89,14 +89,14 @@ export default function TimeBlock({
   const pointerStartRef = useRef({ x: 0, y: 0 });
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    pointerStartRef.current = { x: e.clientX, y: e.clientY };
+    pointerStartRef.current = { x: e.clientX, y: e.clientY, shiftKey: e.shiftKey };
   }, []);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
     if (!onClickBlock) return;
     const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
     const isInProgress = entry.isScheduled && nowMins >= entry.startMinutes;
-    if (!isOpenEnded && !isInProgress) return;
+    if (!isOpenEnded && !(isInProgress && pointerStartRef.current.shiftKey)) return;
     const dx = e.clientX - pointerStartRef.current.x;
     const dy = e.clientY - pointerStartRef.current.y;
     if (Math.abs(dx) < 3 && Math.abs(dy) < 3) {
