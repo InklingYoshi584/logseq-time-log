@@ -98,7 +98,7 @@ export default function App() {
    return Math.max(30, Math.round(avail / 24));
   };
   const [timeLogHourHeight, setTimeLogHourHeight] = useState(() => calcGridHeight());
-  const defaultHourHeightRef = useRef(calcHourHeight(80));
+  const defaultHourHeightRef = useRef(calcGridHeight());
   
   useEffect(() => {
    const h = calcGridHeight();
