@@ -95,7 +95,7 @@ export default function App() {
  const calcGridHeight = () => {
    const scrollEl = document.querySelector('.time-grid-scroll') as HTMLElement | null;
    const avail = scrollEl?.clientHeight || (window.innerHeight || 800) - 80;
-   return Math.max(30, Math.round(avail / 24));
+   return Math.max(30, Math.floor(avail / 24));
   };
   const [timeLogHourHeight, setTimeLogHourHeight] = useState(() => calcGridHeight());
   const defaultHourHeightRef = useRef(calcGridHeight());
