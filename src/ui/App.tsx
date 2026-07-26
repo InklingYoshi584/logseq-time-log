@@ -108,6 +108,16 @@ export default function App() {
    setTimeLogHourHeight(h);
    defaultHourHeightRef.current = h;
   }, [activeTab, selectedDay]);
+  
+  useEffect(() => {
+   const onResize = () => {
+    const h = calcHourHeight(80);
+    setTimeLogHourHeight(h);
+    defaultHourHeightRef.current = h;
+   };
+   window.addEventListener("resize", onResize);
+   return () => window.removeEventListener("resize", onResize);
+  }, []);
   const [resizeState, setResizeState] = useState<{ uuid: string; type: "top" | "bottom"; minutes: number } | null>(null);
  const [createState, setCreateState] = useState<{ startMinutes: number; endMinutes: number } | null>(null);
  const [moveState, setMoveState] = useState<{ uuid: string; startMinutes: number } | null>(null);
