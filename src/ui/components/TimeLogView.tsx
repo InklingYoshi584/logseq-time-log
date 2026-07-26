@@ -100,7 +100,8 @@ export default function TimeLogView({
    const scrollTop = (first / 60) * hourHeight - 20;
    gridRef.current?.scrollTo({ top: Math.max(0, scrollTop), behavior: "smooth" });
   } else {
-   gridRef.current?.scrollTo({ top: 6 * hourHeight, behavior: "smooth" });
+   const now = new Date(); const nowMins = now.getHours() * 60 + now.getMinutes();
+   gridRef.current?.scrollTo({ top: (nowMins / 60) * hourHeight - hourHeight, behavior: "smooth" });
   }
  }, [journalDay, entries.length, hourHeight]);
 
@@ -120,7 +121,7 @@ export default function TimeLogView({
     <div className="time-log-zoom">
      <button
       className="time-log-zoom-btn"
-      onClick={() => onHourHeightChange(Math.max(30, hourHeight - 15))}
+      onClick={() => onHourHeightChange(Math.max(defaultHourHeight, hourHeight - 15))}
      >
       −
      </button>
@@ -141,7 +142,7 @@ export default function TimeLogView({
     <div ref={gridRef} className="time-grid-scroll"
      onWheel={(e) => {
       if (e.ctrlKey) {
-       onHourHeightChange(Math.max(30, Math.min(240, hourHeight + (e.deltaY > 0 ? -10 : 10))));
+       onHourHeightChange(Math.max(defaultHourHeight, Math.min(240, hourHeight + (e.deltaY > 0 ? -10 : 10))));
       }
      }}
     >
