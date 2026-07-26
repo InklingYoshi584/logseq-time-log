@@ -121,7 +121,7 @@ export default function TimeLogView({
     <div className="time-log-zoom">
      <button
       className="time-log-zoom-btn"
-      onClick={() => onHourHeightChange(Math.max(defaultHourHeight, hourHeight - 15))}
+      onClick={() => onHourHeightChange(Math.max(defaultHourHeight, hourHeight - Math.round(defaultHourHeight * 0.25)))}
      >
       −
      </button>
@@ -130,7 +130,7 @@ export default function TimeLogView({
      </span>
      <button
       className="time-log-zoom-btn"
-      onClick={() => onHourHeightChange(Math.min(240, hourHeight + 15))}
+      onClick={() => onHourHeightChange(Math.min(240, hourHeight + Math.round(defaultHourHeight * 0.25)))}
      >
       +
      </button>
@@ -142,7 +142,7 @@ export default function TimeLogView({
     <div ref={gridRef} className="time-grid-scroll"
      onWheel={(e) => {
       if (e.ctrlKey) {
-       onHourHeightChange(Math.max(defaultHourHeight, Math.min(240, hourHeight + (e.deltaY > 0 ? -10 : 10))));
+       onHourHeightChange(Math.max(defaultHourHeight, Math.min(240, hourHeight + (e.deltaY > 0 ? -Math.round(defaultHourHeight * 0.25) : Math.round(defaultHourHeight * 0.25)))));
       }
      }}
     >
