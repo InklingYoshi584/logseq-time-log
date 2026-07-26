@@ -98,8 +98,10 @@ export default function App() {
   };
   const [timeLogHourHeight, setTimeLogHourHeight] = useState(() => calcDefaultHourHeight());
   useEffect(() => {
-   console.log("[zoom] hourHeight:", timeLogHourHeight, "default:", calcDefaultHourHeight(), "vh:", window.innerHeight);
-  }, []);
+   const h = calcDefaultHourHeight();
+   console.log("[zoom] recalc hourHeight:", h, "vh:", window.innerHeight);
+   setTimeLogHourHeight(h);
+  }, [activeTab, selectedDay]);
   const defaultHourHeightRef = useRef(calcDefaultHourHeight());
  const [resizeState, setResizeState] = useState<{ uuid: string; type: "top" | "bottom"; minutes: number } | null>(null);
  const [createState, setCreateState] = useState<{ startMinutes: number; endMinutes: number } | null>(null);
