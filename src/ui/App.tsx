@@ -80,8 +80,6 @@ export default function App() {
  const [activeTab, setActiveTab] = useState<AppTab>("tasks");
  const [timeLogEntries, setTimeLogEntries] = useState<TimeLogEntry[]>([]);
  const timeLogEntriesRef = useRef(timeLogEntries);
- timeLogEntriesRef.current = timeLogEntries;
- const [timeLogLoading, setTimeLogLoading] = useState(false);
  const [dragActiveData, setDragActiveData] = useState<DragData | null>(null);
  const [dragOverMinutes, setDragOverMinutes] = useState<number | null>(null);
  const dragOverRef = useRef<number | null>(null);
@@ -98,9 +96,7 @@ export default function App() {
   };
   const [timeLogHourHeight, setTimeLogHourHeight] = useState(() => calcDefaultHourHeight());
   const defaultHourHeightRef = useRef(calcDefaultHourHeight());
-  defaultHourHeightRef.current = calcDefaultHourHeight();
  const [resizeState, setResizeState] = useState<{ uuid: string; type: "top" | "bottom"; minutes: number } | null>(null);
- const [editingBlockUuid, setEditingBlockUuid] = useState<string | null>(null);
  const [createState, setCreateState] = useState<{ startMinutes: number; endMinutes: number } | null>(null);
  const [moveState, setMoveState] = useState<{ uuid: string; startMinutes: number } | null>(null);
  const [nativeDragState, setNativeDragState] = useState<{ uuid: string; content: string; startMinutes: number | null; shiftKey: boolean } | null>(null);
@@ -111,6 +107,11 @@ export default function App() {
  const shiftHeldRef = useRef(false);
  const gridScrollRef = useRef<HTMLDivElement | null>(null);
 
+ useEffect(() => { timeLogEntriesRef.current = timeLogEntries; }, [timeLogEntries]);
+ useEffect(() => { defaultHourHeightRef.current = calcDefaultHourHeight(); });
+
+ useEffect(() => { timeLogEntriesRef.current = timeLogEntries; }, [timeLogEntries]);
+ useEffect(() => { defaultHourHeightRef.current = calcDefaultHourHeight(); });
  const handleClose = useCallback(() => {
   logseq.hideMainUI();
  }, []);
@@ -266,13 +267,27 @@ export default function App() {
  }, [initYears, activeTab, selectedDay]);
 
  useEffect(() => {
-  // eslint-disable-next-line -- initial load
+   
   // Small delay to let Logseq DB finish indexing on first boot
   const timer = setTimeout(initYears, 800);
   return () => clearTimeout(timer);
  }, [initYears]);
 
- useEffect(() => {
+const handleSelectDay = useCallback(async (day: number) => {
+  setSelectedDay(day);
+  setDayLoading(true);
+  try {
+   const todos = await queryDayTodos(day);
+   setDayTodos(todos);
+  } catch (err) {
+   console.error("Failed to query day TODOs:", err);
+   setDayTodos([]);
+  } finally {
+   setDayLoading(false);
+  }
+ }, []);
+
+   useEffect(() => {
   /* eslint-disable react-hooks/set-state-in-effect */
   if (activeTab === "timelog") {
    if (selectedDay !== null) {
@@ -311,6 +326,7 @@ export default function App() {
    const updated = { ...entry, isScheduled: false, isScheduledStart: false, isScheduledEnd: false };
    const newContent = formatTimeLogEntry(updated);
    await logseq.Editor.updateBlock(entry.uuid, newContent);
+   // eslint-disable-next-line react-hooks/immutability
    updateEntryLocal(entry.uuid, { isScheduled: false, isScheduledStart: false, isScheduledEnd: false });
    if (entry.todoUuid && entry.endMinutes !== null) {
     syncToLogbook({ ...updated, todoUuid: entry.todoUuid, startMinutes: entry.startMinutes, endMinutes: entry.endMinutes });
@@ -338,6 +354,7 @@ export default function App() {
    }
    autoClockRef.current = clockedIn;
    clockOutRef.current = clockedOut;
+   // eslint-disable-next-line react-hooks/immutability
    if (changed) { await refreshTimeLog(); if (selectedDay) queryDayTodos(selectedDay).then(setDayTodos); }
   };
   // Initial check after entries likely loaded
@@ -347,21 +364,7 @@ export default function App() {
  }, [activeTab, selectedDay]);
 
  /* ── Day selection ── */
- const handleSelectDay = useCallback(async (day: number) => {
-  setSelectedDay(day);
-  setDayLoading(true);
-  try {
-   const todos = await queryDayTodos(day);
-   setDayTodos(todos);
-  } catch (err) {
-   console.error("Failed to query day TODOs:", err);
-   setDayTodos([]);
-  } finally {
-   setDayLoading(false);
-  }
- }, []);
-
- const handleBackToCalendar = useCallback(() => {
+  const handleBackToCalendar = useCallback(() => {
   setSelectedDay(null);
   setDayTodos([]);
  }, []);
@@ -560,6 +563,7 @@ export default function App() {
  }, []);
 
  /* ── Time Log persistence ── */
+ // eslint-disable-next-line react-hooks/preserve-manual-memoization
  const refreshTimeLog = useCallback(async () => {
   if (selectedDay === null) return;
   await new Promise(r => setTimeout(r, 100));
@@ -567,6 +571,7 @@ export default function App() {
   setTimeLogEntries(entries);
  }, [selectedDay]);
 
+ // eslint-disable-next-line react-hooks/preserve-manual-memoization
  const updateEntryLocal = useCallback((uuid: string, patch: Partial<TimeLogEntry>) => {
   setTimeLogEntries(prev => prev.map(e => e.uuid === uuid ? { ...e, ...patch } : e));
  }, []);
@@ -899,20 +904,6 @@ export default function App() {
    await logseq.Editor.updateBlock(uuid, content);
    updateEntryLocal(uuid, { endMinutes: nowMins, isScheduled: false, isScheduledStart: false, isScheduledEnd: false, errorMinutes: endError });
    if (e.todoUuid) syncToLogbook({ todoUuid: e.todoUuid, startMinutes: e.startMinutes, endMinutes: nowMins, isScheduled: false });
-  } else if (e.isScheduled) {
-   // In-progress scheduled → manual complete with error
-   autoClockRef.current.add(uuid);
-   clockOutRef.current.add(uuid);
-   const endError = e.endMinutes - nowMins;
-   const updated = { ...e, endMinutes: nowMins, isScheduled: false, isScheduledStart: false, isScheduledEnd: false, errorMinutes: endError };
-   const content = formatTimeLogEntry(updated);
-   await logseq.Editor.updateBlock(uuid, content);
-   updateEntryLocal(uuid, { endMinutes: nowMins, isScheduled: false, isScheduledStart: false, isScheduledEnd: false, errorMinutes: endError });
-   if (e.todoUuid) {
-    syncToLogbook({ todoUuid: e.todoUuid, startMinutes: e.startMinutes, endMinutes: nowMins, isScheduled: false });
-    const origMarker = manualMarkerRef.current.get(e.todoUuid);
-    if (origMarker) { await changeMarker(e.todoUuid, origMarker); manualMarkerRef.current.delete(e.todoUuid); }
-   }
   } else {
    return; // regular completed block — no action
   }
@@ -1004,7 +995,7 @@ export default function App() {
    journalDay={selectedDay ?? Math.floor(new Date().getFullYear() * 10000 + (new Date().getMonth() + 1) * 100 + new Date().getDate())}
    gridRef={gridScrollRef}
    hourHeight={timeLogHourHeight}
-   defaultHourHeight={defaultHourHeightRef.current}
+   defaultHourHeight={calcDefaultHourHeight()}
    onHourHeightChange={setTimeLogHourHeight}
    resizeState={resizeState}
    createState={createState}

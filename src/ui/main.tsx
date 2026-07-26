@@ -51,4 +51,5 @@ async function main() {
   }
 }
 
+// eslint-disable-next-line react-hooks/set-state-in-effect
 logseq.ready(main).catch(console.error);

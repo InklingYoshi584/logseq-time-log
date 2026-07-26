@@ -806,7 +806,7 @@ const OPEN_END_RE = /^(\d{1,2}):(\d{2})\s*-\s+(.+)$/;
 export function parseTimeLogEntry(raw: string, blockUuid: string, isClockEntry: boolean): TimeLogEntry | null {
  let m: RegExpMatchArray | null;
  let isScheduledStart = false, isScheduledEnd = false;
- let startMinutes: number, endMinutes: number | null = null;
+ let startMinutes: number, endMinutes: number | null;
  let rest: string;
  // Match: (both), (start)-end, start-(end), plain, open-ended
  if ((m = raw.match(TIME_RE))) { startMinutes = +m[1] * 60 + +m[2]; endMinutes = +m[3] * 60 + +m[4]; rest = m[5].trim(); isScheduledStart = isScheduledEnd = true; }

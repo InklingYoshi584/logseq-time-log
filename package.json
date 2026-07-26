@@ -10,7 +10,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/copy-to-dist.mjs",
+    "build": "vite build && node scripts/copy-to-dist.mjs && npm run lint",
     "build:ui": "vite build",
     "lint": "eslint src/"
   },
