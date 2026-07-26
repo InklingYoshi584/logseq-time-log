@@ -122,7 +122,6 @@ export default function App() {
  useEffect(() => { timeLogEntriesRef.current = timeLogEntries; }, [timeLogEntries]);
  
  useEffect(() => { timeLogEntriesRef.current = timeLogEntries; }, [timeLogEntries]);
- useEffect(() => { defaultHourHeightRef.current = calcDefaultHourHeight(); });
  const handleClose = useCallback(() => {
   logseq.hideMainUI();
  }, []);
