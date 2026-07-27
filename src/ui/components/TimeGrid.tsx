@@ -205,7 +205,6 @@ export default function TimeGrid({
    style={{ minHeight: totalHeight }}
   >
    <HourMarkers hourHeight={hourHeight} />
-   <CurrentTimeLine top={currentTimeTop} label={formatHM(nowMinutes)} onClickCurrentTime={onClickCurrentTime} />
 
    <div
     className={`time-grid-zone${isOver ? " time-grid-zone--over" : ""}`}
@@ -289,6 +288,7 @@ export default function TimeGrid({
      } catch { /* ignore */ }
     }}
    >
+    <CurrentTimeLine top={currentTimeTop} label={formatHM(nowMinutes)} onClickCurrentTime={onClickCurrentTime} />
     {layoutBlocks.map(({ entry, column, totalColumns }) => {
      let displayStart = entry.startMinutes;
      let displayEnd: number = entry.endMinutes ?? nowMinutes;
