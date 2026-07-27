@@ -39,7 +39,7 @@ export default function HourMarkers({ hourHeight }: HourMarkersProps) {
 
         return (
           <div key={m.key} className={className} style={{ top: `${m.top}px` }}>
-            {m.label !== null && <span className="time-grid-label">{m.label}</span>}
+            null
           </div>
         );
       })}
