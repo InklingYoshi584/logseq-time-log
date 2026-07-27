@@ -583,11 +583,48 @@ const handleSelectDay = useCallback(async (day: number) => {
 
  /* ── Time Log persistence ── */
  // eslint-disable-next-line react-hooks/preserve-manual-memoization
- const refreshTimeLog = useCallback(async () => {
+ 
+// Clean up malformed CLOCK entries (concatenated, duplicates) in linked TODOs
+const cleanupClockLogbook = async (entries: TimeLogEntry[]) => {
+  const seenTodos = new Set<string>();
+  for (const e of entries) {
+    if (!e.todoUuid || seenTodos.has(e.todoUuid)) continue;
+    seenTodos.add(e.todoUuid);
+    try {
+      const b = await logseq.Editor.getBlock(e.todoUuid);
+      if (!b?.content) continue;
+      const content = String(b.content);
+      // Extract LOGBOOK
+      const lbMatch = content.match(/:LOGBOOK:([\s\S]*?):END:/i);
+      if (!lbMatch) continue;
+      const lbBody = lbMatch[1];
+      // Find all CLOCK lines, normalize (split concatenated, dedup, sort)
+      const clockLines = lbBody.match(/CLOCK:\s*\[[^\]]+\]--\[[^\]]+\]\s*=>\s*\S+/g) || [];
+      if (clockLines.length <= 1 && !lbBody.includes('CLOCK:CLOCK:')) continue;
+      // Deduplicate by start time
+      const seen = new Set<string>();
+      const unique: string[] = [];
+      for (const cl of clockLines) {
+        const m = cl.match(/\[([^\]]+)\]/);
+        const key = m ? m[1].trim() : cl;
+        if (!seen.has(key)) { seen.add(key); unique.push(cl); }
+      }
+      unique.sort();
+      const newLb = unique.length > 0 ? unique.join('\n') + '\n' : '';
+      const newContent = content.replace(/:LOGBOOK:([\s\S]*?):END:/i, `:LOGBOOK:\n${newLb}:END:`);
+      if (newContent !== content) {
+        await logseq.Editor.updateBlock(e.todoUuid, newContent);
+      }
+    } catch { /* skip */ }
+  }
+};
+
+const refreshTimeLog = useCallback(async () => {
   if (selectedDay === null) return;
   await new Promise(r => setTimeout(r, 100));
   const entries = await queryTimeLogEntries(selectedDay);
   setTimeLogEntries(entries);
+  cleanupClockLogbook(entries);
  }, [selectedDay]);
 
  // eslint-disable-next-line react-hooks/preserve-manual-memoization
