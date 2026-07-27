@@ -780,7 +780,7 @@ const handleSelectDay = useCallback(async (day: number) => {
        const updated = { ...e, startMinutes: newStart, endMinutes: newEnd, isScheduled: false, isScheduledStart: false, isScheduledEnd: false };
        await logseq.Editor.updateBlock(data.uuid, formatTimeLogEntry(updated));
        updateEntryLocal(data.uuid, { startMinutes: newStart, endMinutes: newEnd, isScheduled: false, isScheduledStart: false, isScheduledEnd: false });
-       if (e?.todoUuid) syncToLogbook({ ...e, startMinutes: newStart, endMinutes: newEnd }, data.startMinutes);
+       if (e?.todoUuid) syncToLogbook({ ...updated, startMinutes: newStart, endMinutes: newEnd }, data.startMinutes);
       } else {
        await updateTimeLogEntry(data.uuid, newStart, newEnd);
        updateEntryLocal(data.uuid, { startMinutes: newStart, endMinutes: newEnd });
@@ -833,7 +833,7 @@ const handleSelectDay = useCallback(async (day: number) => {
       const updated = { ...e, endMinutes: newEnd, isScheduled: false, isScheduledStart: false, isScheduledEnd: false, errorMinutes: err };
       await logseq.Editor.updateBlock(data.uuid, formatTimeLogEntry(updated));
       updateEntryLocal(data.uuid, { endMinutes: newEnd, isScheduled: false, isScheduledStart: false, isScheduledEnd: false, errorMinutes: err });
-      if (e?.todoUuid && data.endMinutes) syncToLogbook({ ...e, startMinutes: data.startMinutes, endMinutes: newEnd }, data.startMinutes);
+      if (e?.todoUuid && data.endMinutes) syncToLogbook({ ...updated, startMinutes: data.startMinutes, endMinutes: newEnd }, data.startMinutes);
      }
     } else {
      if (shiftKey && e) {
