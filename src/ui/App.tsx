@@ -646,7 +646,7 @@ const cleanupClockLogbook = async (entries: TimeLogEntry[], day: number) => {
         ?? `${Math.floor(day / 10000)}${String(Math.floor((day % 10000) / 100)).padStart(2, '0')}${String(day % 100).padStart(2, '0')}`;
       for (const c of clocks) {
         const timePart = c.startStr.substring(c.startStr.lastIndexOf(' ') + 1).substring(0, 5);
-        if (!entryByStart.has(timePart) && c.durStr) {
+        if (!entryByStart.has(timePart) && c.durStr && c.startStr.startsWith(dateStr)) {
           // Parse start and end times
           const startParts = c.startStr.match(/(\d{2}):(\d{2})/);
           const endParts = c.endStr.match(/(\d{2}):(\d{2})/);
