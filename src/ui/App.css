@@ -1078,18 +1078,6 @@ html, body, #root {
   position: relative;
   min-height: 100%;
 }
-.time-grid-hour-label {
-  position: absolute;
-  left: 0;
-  font-size: 10px;
-  font-family: var(--font-mono);
-  color: var(--text-muted);
-  padding: 0 4px;
-  line-height: 1;
-  transform: translateY(-50%);
-  pointer-events: none;
-  z-index: 0;
-}
 
 /* ── Current Time Line ── */
 .time-grid-now {
