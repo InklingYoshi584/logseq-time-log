@@ -63,7 +63,7 @@ html, body, #root {
 
 .header-bar {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   height: 40px;
   padding: 0 8px;
