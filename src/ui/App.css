@@ -1034,7 +1034,8 @@ html, body, #root {
   font-size: 10px;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  padding-left: 4px;
+  text-align: right;
+  padding-right: 6px;
   padding-top: 3px;
   line-height: 14px;
 }
