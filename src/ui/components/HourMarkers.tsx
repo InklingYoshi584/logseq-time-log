@@ -37,11 +37,7 @@ export default function HourMarkers({ hourHeight }: HourMarkersProps) {
         else if (m.half) className += " time-grid-marker--half";
         else className += " time-grid-marker--quarter";
 
-        return (
-          <div key={m.key} className={className} style={{ top: `${m.top}px` }}>
-            null
-          </div>
-        );
+        return <div key={m.key} className={className} style={{ top: `${m.top}px` }} />;
       })}
     </div>
   );
