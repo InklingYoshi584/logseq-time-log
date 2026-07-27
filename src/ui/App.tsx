@@ -258,19 +258,20 @@ export default function App() {
    const durH = String(Math.floor((entry.endMinutes - entry.startMinutes) / 60)).padStart(2, "0");
    const durM = String((entry.endMinutes - entry.startMinutes) % 60).padStart(2, "0");
    const newClock = `CLOCK: [${dateStr} ${sh}:${sm}:00]--[${dateStr} ${eh}:${em}:00] =>  ${durH}:${durM}:00`;
-   let newContent;
+   // Remove any old CLOCK with matching start time, then append new one
+   let cleaned = content;
    if (oldStart !== undefined) {
     const osh = String(Math.floor(oldStart / 60)).padStart(2, "0");
     const osm = String(oldStart % 60).padStart(2, "0");
-    const re = new RegExp(`CLOCK:\\s*\\[.*?${osh}:${osm}:\\d{2}\\].*`, "g");
-    newContent = content.replace(re, newClock);
+    const re = new RegExp(`\\s*CLOCK:\\s*\\[.*?${osh}:${osm}:\\d{2}\\][^\\n]*\\r?\\n?`, "g");
+    cleaned = content.replace(re, "");
+   }
+   const lbMatch = cleaned.match(/:LOGBOOK:([\s\S]*?):END:/i);
+   let newContent;
+   if (lbMatch) {
+    newContent = cleaned.replace(/:LOGBOOK:([\s\S]*?):END:/i, `:LOGBOOK:$1${newClock}\n:END:`);
    } else {
-    const lbMatch = content.match(/:LOGBOOK:([\s\S]*?):END:/i);
-    if (lbMatch) {
-     newContent = content.replace(/:LOGBOOK:([\s\S]*?):END:/i, `:LOGBOOK:$1${newClock}\n:END:`);
-    } else {
-     newContent = content + `\n:LOGBOOK:\n${newClock}\n:END:`;
-    }
+    newContent = cleaned + `\n:LOGBOOK:\n${newClock}\n:END:`;
    }
    await logseq.Editor.updateBlock(entry.todoUuid, newContent);
   } catch { /* ignore */ }
