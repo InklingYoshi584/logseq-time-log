@@ -641,32 +641,7 @@ const cleanupClockLogbook = async (entries: TimeLogEntry[], day: number) => {
           changed = true;
         }
       }
-      // 2. Missing time log entries: CLOCK exists but no time log entry → create entry
-      const pageName = await resolveJournalPageName(day)
-        ?? `${Math.floor(day / 10000)}${String(Math.floor((day % 10000) / 100)).padStart(2, '0')}${String(day % 100).padStart(2, '0')}`;
-      for (const c of clocks) {
-        const timePart = c.startStr.substring(c.startStr.lastIndexOf(' ') + 1).substring(0, 5);
-        if (!entryByStart.has(timePart) && c.durStr && c.startStr.startsWith(dateStr)) {
-          // Parse start and end times
-          const startParts = c.startStr.match(/(\d{2}):(\d{2})/);
-          const endParts = c.endStr.match(/(\d{2}):(\d{2})/);
-          if (startParts && endParts) {
-            const startMin = parseInt(startParts[1]) * 60 + parseInt(startParts[2]);
-            const endMin = parseInt(endParts[1]) * 60 + parseInt(endParts[2]);
-            if (endMin > startMin) {
-              const blockUuid = await findOrCreateTimeLogBlock(pageName);
-              const content2 = formatTimeLogEntry({
-                uuid: '', startMinutes: startMin, endMinutes: endMin, activity: '',
-                todoUuid, isClockEntry: false,
-                isScheduled: false, isScheduledStart: false, isScheduledEnd: false,
-              });
-              await logseq.Editor.insertBlock(blockUuid, content2, { sibling: false });
-              changed = true;
-            }
-          }
-        }
-      }
-      // 3. Remove malformed (zero-duration, duplicates) and sort
+      // 2. Remove malformed (zero-duration, concatenated duplicates) and sort
       const seen = new Set<string>();
       const clean: typeof clocks = [];
       for (const c of clocks) {
