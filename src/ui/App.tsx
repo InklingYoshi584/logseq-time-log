@@ -654,8 +654,10 @@ const handleSelectDay = useCallback(async (day: number) => {
     if (b?.content) {
      const sh = String(Math.floor(e.startMinutes / 60)).padStart(2, "0");
      const sm = String(e.startMinutes % 60).padStart(2, "0");
-     const re = new RegExp(`CLOCK:\\s*\\[.*?${sh}:${sm}:\\d{2}\\].*\\n?`, "g");
-     await logseq.Editor.updateBlock(e.todoUuid, String(b.content).replace(re, "")); if (selectedDay) setTimeout(() => queryDayTodos(selectedDay).then(setDayTodos), 150);
+     const re = new RegExp(`\\s*CLOCK:\\s*\\[.*?${sh}:${sm}:\\d{2}\\][^\\n]*\\r?\\n?`, "g");
+     const cleaned = String(b.content).replace(re, "");
+     await logseq.Editor.updateBlock(e.todoUuid, cleaned);
+     if (selectedDay) setTimeout(() => queryDayTodos(selectedDay).then(setDayTodos), 150);
     }
    } catch { /* ignore */ }
   }
@@ -771,9 +773,18 @@ const handleSelectDay = useCallback(async (day: number) => {
       updateEntryLocal(data.uuid, { startMinutes: newStart, endMinutes: newEnd, errorMinutes: err !== 0 ? err : undefined });
       if (e?.todoUuid) syncToLogbook({ ...e, startMinutes: newStart, endMinutes: newEnd }, data.startMinutes);
      } else {
-      await updateTimeLogEntry(data.uuid, newStart, newEnd);
-      updateEntryLocal(data.uuid, { startMinutes: newStart, endMinutes: newEnd });
-      if (e?.todoUuid) syncToLogbook({ ...e, startMinutes: newStart, endMinutes: newEnd }, data.startMinutes);
+      // Check if scheduled block moved to past → auto-complete
+      const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+      if (e?.isScheduled && newEnd <= nowMins) {
+       const updated = { ...e, startMinutes: newStart, endMinutes: newEnd, isScheduled: false, isScheduledStart: false, isScheduledEnd: false };
+       await logseq.Editor.updateBlock(data.uuid, formatTimeLogEntry(updated));
+       updateEntryLocal(data.uuid, { startMinutes: newStart, endMinutes: newEnd, isScheduled: false, isScheduledStart: false, isScheduledEnd: false });
+       if (e?.todoUuid) syncToLogbook({ ...e, startMinutes: newStart, endMinutes: newEnd }, data.startMinutes);
+      } else {
+       await updateTimeLogEntry(data.uuid, newStart, newEnd);
+       updateEntryLocal(data.uuid, { startMinutes: newStart, endMinutes: newEnd });
+       if (e?.todoUuid) syncToLogbook({ ...e, startMinutes: newStart, endMinutes: newEnd }, data.startMinutes);
+      }
      }
     }
     if (selectedDay) setTimeout(() => queryDayTodos(selectedDay).then(setDayTodos), 150);
