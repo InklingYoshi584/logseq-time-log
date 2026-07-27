@@ -780,7 +780,14 @@ const handleSelectDay = useCallback(async (day: number) => {
        const updated = { ...e, startMinutes: newStart, endMinutes: newEnd, isScheduled: false, isScheduledStart: false, isScheduledEnd: false };
        await logseq.Editor.updateBlock(data.uuid, formatTimeLogEntry(updated));
        updateEntryLocal(data.uuid, { startMinutes: newStart, endMinutes: newEnd, isScheduled: false, isScheduledStart: false, isScheduledEnd: false });
-       if (e?.todoUuid) syncToLogbook({ ...updated, startMinutes: newStart, endMinutes: newEnd }, data.startMinutes);
+       if (e?.todoUuid) {
+        syncToLogbook({ ...updated, startMinutes: newStart, endMinutes: newEnd }, data.startMinutes);
+        // Restore TODO marker if auto-clock changed it to DOING
+        const origMarker = manualMarkerRef.current.get(e.todoUuid);
+        if (origMarker) { await logseq.Editor.updateBlock(e.todoUuid, changeMarker(e.todoUuid, origMarker)); manualMarkerRef.current.delete(e.todoUuid); }
+       }
+       autoClockRef.current.add(data.uuid);
+       clockOutRef.current.add(data.uuid);
       } else {
        await updateTimeLogEntry(data.uuid, newStart, newEnd);
        updateEntryLocal(data.uuid, { startMinutes: newStart, endMinutes: newEnd });
