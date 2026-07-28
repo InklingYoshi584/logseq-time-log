@@ -880,7 +880,15 @@ const refreshTimeLog = useCallback(async () => {
       } else {
        await updateTimeLogEntry(data.uuid, newStart, newEnd);
        updateEntryLocal(data.uuid, { startMinutes: newStart, endMinutes: newEnd });
-       if (e?.todoUuid) syncToLogbook({ ...e, startMinutes: newStart, endMinutes: newEnd }, data.startMinutes);
+       if (e?.todoUuid) {
+        // If this scheduled block was in progress (DOING), revert marker
+        const origMarker = manualMarkerRef.current.get(e.todoUuid);
+        if (origMarker) { await changeMarker(e.todoUuid, origMarker); manualMarkerRef.current.delete(e.todoUuid); }
+        syncToLogbook({ ...e, startMinutes: newStart, endMinutes: newEnd }, data.startMinutes);
+       }
+       // Remove from auto-clock tracking since times changed
+       autoClockRef.current.delete(data.uuid);
+       clockOutRef.current.delete(data.uuid);
       }
      }
     }
@@ -903,8 +911,13 @@ const refreshTimeLog = useCallback(async () => {
      await updateTimeLogEntry(data.uuid, newStart, data.endMinutes);
      updateEntryLocal(data.uuid, { startMinutes: newStart });
      if (e?.todoUuid && data.endMinutes) {
+      // If scheduled block was in progress, revert DOING marker
+      const origMarker = manualMarkerRef.current.get(e.todoUuid);
+      if (origMarker) { await changeMarker(e.todoUuid, origMarker); manualMarkerRef.current.delete(e.todoUuid); }
       syncToLogbook({ ...e, startMinutes: newStart, endMinutes: data.endMinutes }, data.startMinutes);
      }
+     autoClockRef.current.delete(data.uuid);
+     clockOutRef.current.delete(data.uuid);
     }
     if (selectedDay) setTimeout(() => queryDayTodos(selectedDay).then(setDayTodos), 150);
     break;
