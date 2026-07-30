@@ -94,30 +94,30 @@ export default function App() {
  const [createModalRange, setCreateModalRange] = useState<{ start: number; end: number } | null>(null);
  const [createModalName, setCreateModalName] = useState("");
  const calcGridHeight = () => {
-   const scrollEl = document.querySelector('.time-grid-scroll') as HTMLElement | null;
-   if (!scrollEl?.clientHeight) return 40;
-   return Math.max(30, Math.floor(scrollEl.clientHeight / 24));
-  };
-  const [timeLogHourHeight, setTimeLogHourHeight] = useState(() => calcGridHeight());
-  const defaultHourHeightRef = useRef(calcGridHeight());
-  
-  useEffect(() => {
+  const scrollEl = document.querySelector('.time-grid-scroll') as HTMLElement | null;
+  if (!scrollEl?.clientHeight) return 40;
+  return Math.max(30, Math.floor(scrollEl.clientHeight / 24));
+ };
+ const [timeLogHourHeight, setTimeLogHourHeight] = useState(() => calcGridHeight());
+ const defaultHourHeightRef = useRef(calcGridHeight());
+
+ useEffect(() => {
+  const h = calcGridHeight();
+  console.log("[zoom] recalc hourHeight:", h, "avail:", document.querySelector(".time-grid-scroll")?.clientHeight);
+  setTimeLogHourHeight(h);
+  defaultHourHeightRef.current = h;
+ }, [activeTab, selectedDay]);
+
+ useEffect(() => {
+  const onResize = () => {
    const h = calcGridHeight();
-   console.log("[zoom] recalc hourHeight:", h, "avail:", document.querySelector(".time-grid-scroll")?.clientHeight);
    setTimeLogHourHeight(h);
    defaultHourHeightRef.current = h;
-  }, [activeTab, selectedDay]);
-  
-  useEffect(() => {
-   const onResize = () => {
-    const h = calcGridHeight();
-    setTimeLogHourHeight(h);
-    defaultHourHeightRef.current = h;
-   };
-   window.addEventListener("resize", onResize);
-   return () => window.removeEventListener("resize", onResize);
-  }, []);
-  const [resizeState, setResizeState] = useState<{ uuid: string; type: "top" | "bottom"; minutes: number } | null>(null);
+  };
+  window.addEventListener("resize", onResize);
+  return () => window.removeEventListener("resize", onResize);
+ }, []);
+ const [resizeState, setResizeState] = useState<{ uuid: string; type: "top" | "bottom"; minutes: number } | null>(null);
  const [createState, setCreateState] = useState<{ startMinutes: number; endMinutes: number } | null>(null);
  const [moveState, setMoveState] = useState<{ uuid: string; startMinutes: number } | null>(null);
  const [nativeDragState, setNativeDragState] = useState<{ uuid: string; content: string; startMinutes: number | null; shiftKey: boolean } | null>(null);
@@ -129,7 +129,7 @@ export default function App() {
  const gridScrollRef = useRef<HTMLDivElement | null>(null);
 
  useEffect(() => { timeLogEntriesRef.current = timeLogEntries; }, [timeLogEntries]);
- 
+
  useEffect(() => { timeLogEntriesRef.current = timeLogEntries; }, [timeLogEntries]);
  const handleClose = useCallback(() => {
   logseq.hideMainUI();
@@ -287,13 +287,13 @@ export default function App() {
  }, [initYears, activeTab, selectedDay]);
 
  useEffect(() => {
-   
+
   // Small delay to let Logseq DB finish indexing on first boot
   const timer = setTimeout(initYears, 800);
   return () => clearTimeout(timer);
  }, [initYears]);
 
-const handleSelectDay = useCallback(async (day: number) => {
+ const handleSelectDay = useCallback(async (day: number) => {
   setSelectedDay(day);
   setDayLoading(true);
   try {
@@ -306,20 +306,22 @@ const handleSelectDay = useCallback(async (day: number) => {
    setDayLoading(false);
   }
  }, []);
-
-   useEffect(() => {
+ useEffect(() => {
   /* eslint-disable react-hooks/set-state-in-effect */
   if (activeTab === "timelog") {
    if (selectedDay !== null) {
+    timeLogAutoSelectedRef.current = true;
     setTimeLogLoading(true);
     setSelectedBlockUuid(null);
     queryTimeLogEntries(selectedDay).then(setTimeLogEntries).finally(() => setTimeLogLoading(false));
-   } else {
-    // Auto-select today when switching to Time Log tab with no day selected
+   } else if (!timeLogAutoSelectedRef.current) {
+    // Auto-select today only on initial switch to Time Log tab
     const now = new Date();
     const today = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
     handleSelectDay(today);
    }
+  } else {
+   timeLogAutoSelectedRef.current = false;
   }
   /* eslint-enable react-hooks/set-state-in-effect */
  }, [activeTab, selectedDay]);
@@ -337,11 +339,11 @@ const handleSelectDay = useCallback(async (day: number) => {
      if (markerMatch && markerMatch[1] !== "DOING" && markerMatch[1] !== "DONE") {
       manualMarkerRef.current.set(entry.todoUuid, markerMatch[1]);
       await changeMarker(entry.todoUuid, "DOING");
-       if (selectedDay) queryDayTodos(selectedDay).then(setDayTodos);
-      }
+      if (selectedDay) queryDayTodos(selectedDay).then(setDayTodos);
      }
-    } catch { /* skip */ }
-   };
+    }
+   } catch { /* skip */ }
+  };
   const clockOut = async (entry: TimeLogEntry) => {
    const updated = { ...entry, isScheduled: false, isScheduledStart: false, isScheduledEnd: false };
    const newContent = formatTimeLogEntry(updated);
@@ -384,7 +386,7 @@ const handleSelectDay = useCallback(async (day: number) => {
  }, [activeTab, selectedDay]);
 
  /* ── Day selection ── */
-  const handleBackToCalendar = useCallback(() => {
+ const handleBackToCalendar = useCallback(() => {
   setSelectedDay(null);
   setDayTodos([]);
  }, []);
@@ -584,95 +586,95 @@ const handleSelectDay = useCallback(async (day: number) => {
 
  /* ── Time Log persistence ── */
  // eslint-disable-next-line react-hooks/preserve-manual-memoization
- 
-// Bidirectional sync: time log entries ↔ CLOCK entries in linked TODO LOGBOOKs
-const cleanupClockLogbook = async (entries: TimeLogEntry[], day: number) => {
+
+ // Bidirectional sync: time log entries ↔ CLOCK entries in linked TODO LOGBOOKs
+ const cleanupClockLogbook = async (entries: TimeLogEntry[], day: number) => {
   // Group time log entries by todoUuid
   const byTodo = new Map<string, TimeLogEntry[]>();
   for (const e of entries) {
-    if (!e.todoUuid || e.isScheduled) continue;
-    const list = byTodo.get(e.todoUuid) || [];
-    list.push(e);
-    byTodo.set(e.todoUuid, list);
+   if (!e.todoUuid || e.isScheduled) continue;
+   const list = byTodo.get(e.todoUuid) || [];
+   list.push(e);
+   byTodo.set(e.todoUuid, list);
   }
   for (const [todoUuid, todoEntries] of byTodo) {
-    try {
-      const b = await logseq.Editor.getBlock(todoUuid);
-      if (!b?.content) continue;
-      const content = String(b.content);
-      const lbMatch = content.match(/:LOGBOOK:([\s\S]*?):END:/i);
-      const lbBody = lbMatch ? lbMatch[1] : '';
-      // Parse all CLOCK lines, splitting concatenated ones
-      // Match: start time + end time + optional duration
-      const clockRe = /CLOCK:\s*\[([^\]]+)\]--\[([^\]]+)\]\s*(?:=>\s*(\S+))?/g;
-      const clocks: { startStr: string; endStr: string; durStr: string; full: string }[] = [];
-      let cm: RegExpExecArray | null;
-      while ((cm = clockRe.exec(lbBody)) !== null) {
-        clocks.push({ startStr: cm[1].trim(), endStr: cm[2].trim(), durStr: (cm[3] || '').trim(), full: cm[0] });
-      }
-      // Build map of time log entries by start time for quick lookup
-      const entryByStart = new Map<string, TimeLogEntry>();
-      for (const e of todoEntries) {
-        const key = `${String(Math.floor(e.startMinutes / 60)).padStart(2, '0')}:${String(e.startMinutes % 60).padStart(2, '0')}`;
-        entryByStart.set(key, e);
-      }
-      // Build set of clock start times
-      const clockStarts = new Set(clocks.map(c => c.startStr.substring(c.startStr.lastIndexOf(' ') + 1).substring(0, 5)));
-      let changed = false;
-      // 1. Missing CLOCKs: time log entry exists but no matching CLOCK → add
-      const y = Math.floor(day / 10000);
-      const m = Math.floor((day % 10000) / 100);
-      const d = day % 100;
-      const dateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      for (const e of todoEntries) {
-        const eKey = `${String(Math.floor(e.startMinutes / 60)).padStart(2, '0')}:${String(e.startMinutes % 60).padStart(2, '0')}`;
-        if (!clockStarts.has(eKey) && e.endMinutes !== null) {
-          const sh = String(Math.floor(e.startMinutes / 60)).padStart(2, '0');
-          const sm = String(e.startMinutes % 60).padStart(2, '0');
-          const eh = String(Math.floor(e.endMinutes / 60)).padStart(2, '0');
-          const em = String(e.endMinutes % 60).padStart(2, '0');
-          const durH = String(Math.floor((e.endMinutes - e.startMinutes) / 60)).padStart(2, '0');
-          const durM = String((e.endMinutes - e.startMinutes) % 60).padStart(2, '0');
-          clocks.push({
-            startStr: `${dateStr} ${sh}:${sm}:00`,
-            endStr: `${dateStr} ${eh}:${em}:00`,
-            durStr: `${durH}:${durM}:00`,
-            full: `CLOCK: [${dateStr} ${sh}:${sm}:00]--[${dateStr} ${eh}:${em}:00] =>  ${durH}:${durM}:00`
-          });
-          changed = true;
-        }
-      }
-      // 2. Remove malformed (zero-duration, concatenated duplicates) and sort
-      const seen = new Set<string>();
-      const clean: typeof clocks = [];
-      for (const c of clocks) {
-        const key = c.startStr;
-        if (c.startStr === c.endStr) continue; // zero-duration = malformed
-        if (seen.has(key)) continue;
-        seen.add(key);
-        clean.push(c);
-      }
-      clean.sort((a, b) => a.startStr.localeCompare(b.startStr));
-      if (clean.length !== clocks.length) changed = true;
-      if (!changed) continue;
-      // Rebuild LOGBOOK
-      const newLb = clean.length > 0 ? clean.map(c => c.full).join('\n') + '\n' : '';
-      let newContent: string;
-      if (lbMatch) {
-        newContent = content.replace(/:LOGBOOK:([\s\S]*?):END:/i, `:LOGBOOK:\n${newLb}:END:`);
-      } else if (clean.length > 0) {
-        newContent = content + `\n:LOGBOOK:\n${newLb}:END:`;
-      } else {
-        newContent = content;
-      }
-      if (newContent !== content) {
-        await logseq.Editor.updateBlock(todoUuid, newContent);
-      }
-    } catch { /* skip */ }
+   try {
+    const b = await logseq.Editor.getBlock(todoUuid);
+    if (!b?.content) continue;
+    const content = String(b.content);
+    const lbMatch = content.match(/:LOGBOOK:([\s\S]*?):END:/i);
+    const lbBody = lbMatch ? lbMatch[1] : '';
+    // Parse all CLOCK lines, splitting concatenated ones
+    // Match: start time + end time + optional duration
+    const clockRe = /CLOCK:\s*\[([^\]]+)\]--\[([^\]]+)\]\s*(?:=>\s*(\S+))?/g;
+    const clocks: { startStr: string; endStr: string; durStr: string; full: string }[] = [];
+    let cm: RegExpExecArray | null;
+    while ((cm = clockRe.exec(lbBody)) !== null) {
+     clocks.push({ startStr: cm[1].trim(), endStr: cm[2].trim(), durStr: (cm[3] || '').trim(), full: cm[0] });
+    }
+    // Build map of time log entries by start time for quick lookup
+    const entryByStart = new Map<string, TimeLogEntry>();
+    for (const e of todoEntries) {
+     const key = `${String(Math.floor(e.startMinutes / 60)).padStart(2, '0')}:${String(e.startMinutes % 60).padStart(2, '0')}`;
+     entryByStart.set(key, e);
+    }
+    // Build set of clock start times
+    const clockStarts = new Set(clocks.map(c => c.startStr.substring(c.startStr.lastIndexOf(' ') + 1).substring(0, 5)));
+    let changed = false;
+    // 1. Missing CLOCKs: time log entry exists but no matching CLOCK → add
+    const y = Math.floor(day / 10000);
+    const m = Math.floor((day % 10000) / 100);
+    const d = day % 100;
+    const dateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    for (const e of todoEntries) {
+     const eKey = `${String(Math.floor(e.startMinutes / 60)).padStart(2, '0')}:${String(e.startMinutes % 60).padStart(2, '0')}`;
+     if (!clockStarts.has(eKey) && e.endMinutes !== null) {
+      const sh = String(Math.floor(e.startMinutes / 60)).padStart(2, '0');
+      const sm = String(e.startMinutes % 60).padStart(2, '0');
+      const eh = String(Math.floor(e.endMinutes / 60)).padStart(2, '0');
+      const em = String(e.endMinutes % 60).padStart(2, '0');
+      const durH = String(Math.floor((e.endMinutes - e.startMinutes) / 60)).padStart(2, '0');
+      const durM = String((e.endMinutes - e.startMinutes) % 60).padStart(2, '0');
+      clocks.push({
+       startStr: `${dateStr} ${sh}:${sm}:00`,
+       endStr: `${dateStr} ${eh}:${em}:00`,
+       durStr: `${durH}:${durM}:00`,
+       full: `CLOCK: [${dateStr} ${sh}:${sm}:00]--[${dateStr} ${eh}:${em}:00] =>  ${durH}:${durM}:00`
+      });
+      changed = true;
+     }
+    }
+    // 2. Remove malformed (zero-duration, concatenated duplicates) and sort
+    const seen = new Set<string>();
+    const clean: typeof clocks = [];
+    for (const c of clocks) {
+     const key = c.startStr;
+     if (c.startStr === c.endStr) continue; // zero-duration = malformed
+     if (seen.has(key)) continue;
+     seen.add(key);
+     clean.push(c);
+    }
+    clean.sort((a, b) => a.startStr.localeCompare(b.startStr));
+    if (clean.length !== clocks.length) changed = true;
+    if (!changed) continue;
+    // Rebuild LOGBOOK
+    const newLb = clean.length > 0 ? clean.map(c => c.full).join('\n') + '\n' : '';
+    let newContent: string;
+    if (lbMatch) {
+     newContent = content.replace(/:LOGBOOK:([\s\S]*?):END:/i, `:LOGBOOK:\n${newLb}:END:`);
+    } else if (clean.length > 0) {
+     newContent = content + `\n:LOGBOOK:\n${newLb}:END:`;
+    } else {
+     newContent = content;
+    }
+    if (newContent !== content) {
+     await logseq.Editor.updateBlock(todoUuid, newContent);
+    }
+   } catch { /* skip */ }
   }
-};
+ };
 
-const refreshTimeLog = useCallback(async () => {
+ const refreshTimeLog = useCallback(async () => {
   if (selectedDay === null) return;
   await new Promise(r => setTimeout(r, 100));
   const entries = await queryTimeLogEntries(selectedDay);
