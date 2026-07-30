@@ -80,6 +80,7 @@ export default function App() {
  const [activeTab, setActiveTab] = useState<AppTab>("tasks");
  const [timeLogEntries, setTimeLogEntries] = useState<TimeLogEntry[]>([]);
  const timeLogEntriesRef = useRef(timeLogEntries);
+ const timeLogAutoSelectedRef = useRef(false);
  const [timeLogLoading, setTimeLogLoading] = useState(false);
  const [dragActiveData, setDragActiveData] = useState<DragData | null>(null);
  const [dragOverMinutes, setDragOverMinutes] = useState<number | null>(null);
