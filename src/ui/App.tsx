@@ -1111,6 +1111,7 @@ const refreshTimeLog = useCallback(async () => {
     onSelectDay={handleSelectDay}
     onExpandUp={expandUp}
     onExpandDown={expandDown}
+    onGoToToday={() => { const now = new Date(); handleSelectDay(now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate()); }}
    />
   </div>
  );
