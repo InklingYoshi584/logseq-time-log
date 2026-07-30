@@ -377,6 +377,35 @@ html, body, #root {
   width: 100%;
 }
 
+.calendar-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 6px 12px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--ls-primary-background-color, #fff);
+  border-bottom: 1px solid var(--ls-border-color, rgba(0,0,0,0.08));
+}
+.calendar-today-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--ls-border-color, rgba(0,0,0,0.12));
+  border-radius: 6px;
+  background: var(--ls-secondary-background-color, #f8f9fa);
+  color: var(--ls-primary-text-color, #333);
+  font-size: 12px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.calendar-today-btn:hover {
+  background: var(--ls-tertiary-background-color, #e9ecef);
+}
+
 .calendar-view {
   padding: 8px;
 }
